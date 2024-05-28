@@ -21,6 +21,9 @@ void TCPServer::Start() {
     }
 }
 
+void TCPServer::Send(unsigned char *buffer, unsigned int len) {
+    sendto(m_socket.sockfd, buffer, len, 0, (struct sockaddr *) &(m_socket.clientaddr), (m_socket.clientlen));
+}
 
 void TCPServer::Bind() {
     struct sockaddr_in serveraddr;

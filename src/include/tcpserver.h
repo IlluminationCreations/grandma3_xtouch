@@ -29,4 +29,5 @@ private:
 public:
     TCPServer(unsigned short port, PacketCallback);
     bool Alive();
+    void Send(unsigned char *buffer, unsigned int len);
 };

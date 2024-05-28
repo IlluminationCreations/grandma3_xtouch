@@ -5,6 +5,10 @@
 #include <stdio.h>
 
 XTouchController::XTouchController() {
+    xt.RegisterPacketSender([&](unsigned char *buffer, unsigned int len) 
+    {
+        xt_server->Send(buffer, len);
+    });
     SpawnServer(SERVER_XT);
 }
 
@@ -21,9 +25,7 @@ void XTouchController::SpawnServer(SpawnType type) {
             if(xt_server != nullptr) { delete xt_server; }
             xt_server = new TCPServer(xt_port, [&] (unsigned char* buffer, uint64_t len)  
                 {
-                    printf("Pre-HandledPacket\n");
                     xt.HandlePacket(buffer, len);
-                    printf("HandledPacket\n");
                 }
             );
             break;

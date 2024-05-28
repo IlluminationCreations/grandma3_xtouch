@@ -101,6 +101,10 @@ void XTouch::RegisterButtonCallback(callback Handler, void *data) {
     mButtonCallbackData=data;
 }
 
+void XTouch::RegisterPacketSender(PacketCallback handler) {
+    m_packetCallBack = handler;
+}
+
 // This moves a physical fader to the level provided (0 to 16384)
 // 12800 is the 0db mark
 // channel is in the range 0 to 8 (8=the 'main' fader)
@@ -412,7 +416,7 @@ void XTouch::SendAllBoard() {
 void XTouch::SendPacket(unsigned char *buffer, unsigned int len)
 {
     for(int i = 0; i < 70000; i++) {}
-    mPacketSendHandler(mPPacketData, buffer,len);
+    m_packetCallBack(buffer, len);
 
 }
 

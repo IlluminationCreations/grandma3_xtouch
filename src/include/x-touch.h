@@ -36,9 +36,12 @@ SOFTWARE.
 */
 #pragma once
 #include <time.h>
+#include <functional>
 
 typedef void (*packet_sender)(void *,unsigned char*, unsigned int); // User pointer, Packet buffer pointer, Packet length
 typedef void (*callback)(void *,unsigned char, int); // User pointer, Object ID, New value
+using PacketCallback = std::function<void(unsigned char*, uint64_t)>;
+
 
 enum xt_colours_t { BLACK, RED, GREEN, YELLOW, BLUE, PINK, CYAN, WHITE };
 enum xt_button_state_t { OFF, FLASHING, ON };
@@ -190,7 +193,8 @@ class XTouch {
         void RegisterFaderCallback(callback Handler, void *data);
         void RegisterFaderStateCallback(callback Handler, void *data);
         void RegisterDialCallback(callback Handler, void *data);
-        void RegisterButtonCallback(callback Handler, void *data);      
+        void RegisterButtonCallback(callback Handler, void *data); 
+        void RegisterPacketSender(PacketCallback handler);     
 
     private:
         int HandleFaderTouch(unsigned char *buffer, unsigned int len);
@@ -215,9 +219,8 @@ class XTouch {
         void DisplayNumber(unsigned char start, int len, int v,int zeros=0);
         unsigned char SegmentBitmap(char v);
 
-        packet_sender mPacketSendHandler;
-        void *mPPacketData;
-
+        
+        PacketCallback m_packetCallBack;
         callback mButtonCallbackHandler;
         callback mDialCallbackHandler;
         callback mLevelCallbackHandler;
