@@ -38,8 +38,6 @@ SOFTWARE.
 #include <time.h>
 #include <functional>
 
-typedef void (*packet_sender)(void *,unsigned char*, unsigned int); // User pointer, Packet buffer pointer, Packet length
-typedef void (*callback)(void *,unsigned char, int); // User pointer, Object ID, New value
 using PacketCallback = std::function<void(unsigned char*, uint64_t)>;
 using EventCallback = std::function<void(unsigned char, int)>;
 
