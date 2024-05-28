@@ -34,7 +34,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-
+#pragma once
 #include <time.h>
 
 typedef void (*packet_sender)(void *,unsigned char*, unsigned int); // User pointer, Packet buffer pointer, Packet length

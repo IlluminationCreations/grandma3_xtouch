@@ -1,0 +1,1 @@
+add_library(XTOUCHCONTROLLER_LIB controller.cpp)
