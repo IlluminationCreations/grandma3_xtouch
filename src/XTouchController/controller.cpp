@@ -108,6 +108,7 @@ void XTouchController::HandleAddressChange(xt_alias_btn btn) {
         {
             uint32_t offset = btn == xt_alias_btn::EXECUTER_SCROLL_LEFT ? -1 : 1;
             m_group.ScrollPage(offset);
+            return;
         }
         case xt_alias_btn::PAGE_DEC:
         case xt_alias_btn::PAGE_INC: 
@@ -115,6 +116,7 @@ void XTouchController::HandleAddressChange(xt_alias_btn btn) {
             uint32_t offset = btn == xt_alias_btn::PAGE_DEC ? -1 : 1; 
             m_group.ChangePage(offset);
             m_pageDisplay.Update(m_group.m_page);
+            return;
         }
         default: { assert(false); }
     }
