@@ -50,6 +50,9 @@ SOFTWARE.
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <time.h>
+#include <thread>
+#include <chrono>
+#include <assert.h>
 
 #include "x-touch.h"
 
@@ -72,11 +75,15 @@ typedef struct {
     int mode;
 } channelinfo_t;
 
-channelinfo_t channels[64];
+
+constexpr int pages = 200;
+channelinfo_t channels[8*pages];
 
 int selected=0;
 int page=0;
 int masterlevel=0;
+
+void main2();
 
 void RenderDial(XTouch *board, int channel) {
     switch (channels[page*8+channel].mode) {
@@ -283,77 +290,169 @@ void dial(void *data, unsigned char dial, int value)
 }
 
 int main(int argc, char **argv) {
-    struct sockaddr_in serveraddr;
-    unsigned char recvbuf[BUFSIZE];
-    int optval;
-    int recvlen;
-    int i;
-    time_t now;
-    struct tm* localtm;
-
-    socketinfo_t udpsocket;
+    main2();
 
     // ------------------------------------------------------------------------------------
-    // Perform socket related initilisations
-    udpsocket.sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (udpsocket.sockfd < 0) {
-        perror("ERROR opening socket");
-        exit(1);
+
+    // // Init stuff related to being a pretend desk (just to show button functionality)
+    // for(i=0;i<64;i++) {
+    //     channels[i].mainlevel=0;
+    //     channels[i].mute=1;
+    //     channels[i].trimlevel=10;
+    //     channels[i].pan=0;
+    //     channels[i].solo=0;
+    //     channels[i].rec=0;
+    //     channels[i].pad.Colour=WHITE;
+    //     channels[i].pad.Inverted=0;
+    //     channels[i].mode=0;
+    //     sprintf(channels[i].pad.TopText," ");
+    //     sprintf(channels[i].pad.BotText,"Ch %d",i+1);        
+    // }
+
+    // XTouch FaderBoard(sendpacket,(void*)&udpsocket);
+
+    // FaderBoard.RegisterButtonCallback(buttonpressed, (void*)&FaderBoard);
+    // FaderBoard.RegisterFaderCallback(faderlevel,(void*)&FaderBoard);
+    // FaderBoard.RegisterFaderStateCallback(fadertouch,(void*)&FaderBoard);
+    // FaderBoard.RegisterDialCallback(dial,(void*)&FaderBoard);
+
+    // RenderPage(&FaderBoard);
+
+    // // The main packet processing loop
+    // while (1) {
+
+        // memset(recvbuf, 0, BUFSIZE);
+        // recvlen = recvfrom(udpsocket.sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *) &(udpsocket.clientaddr), &(udpsocket.clientlen));
+        // if (recvlen < 0) {
+        //     perror("ERROR in recvfrom");
+        //     exit(1);
+        // }
+
+        // now = time(0);
+        // localtm = localtime(&now);
+        // FaderBoard.SetTime(localtm);
+        // FaderBoard.HandlePacket(recvbuf,recvlen);
+    // }
+}
+
+void ThreadWatchDog();
+void XTouchController();
+
+class XTouchUDPServer;
+
+class IServer {
+private:
+    bool m_isValid;
+public:
+    IServer(): m_isValid(false) {};
+
+    bool IsValid() {
+        return m_isValid;
     }
 
-    optval = 1;
-    setsockopt(udpsocket.sockfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval , sizeof(int));
+    friend XTouchUDPServer;
+};
 
-    memset(&serveraddr, 0, sizeof(serveraddr));
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serveraddr.sin_port = htons((unsigned short)10111);
+class MessageCenter {
 
-    if (bind(udpsocket.sockfd, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
-        perror("ERROR on binding");
-        exit(1);
+};
+
+static MessageCenter g_MessageCenter;
+
+class XTouchUDPServer : public IServer {
+private:
+
+    socketinfo_t m_udpsocket;
+    std::thread m_thread;
+    unsigned char m_buffer[BUFSIZE];
+
+    void start_server() {
+        struct sockaddr_in serveraddr;
+            // ------------------------------------------------------------------------------------
+            // Perform socket related initilisations
+            m_udpsocket.sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+            if (m_udpsocket.sockfd < 0) {
+                printf("ERROR opening socket\n");
+            }
+
+            int optval = 1;
+            setsockopt(m_udpsocket.sockfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval , sizeof(int));
+
+            memset(&serveraddr, 0, sizeof(serveraddr));
+            serveraddr.sin_family = AF_INET;
+            serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+            serveraddr.sin_port = htons((unsigned short)10111);
+
+            if (bind(m_udpsocket.sockfd, (struct sockaddr *) &serveraddr, sizeof(serveraddr)) < 0) {
+                printf("ERROR on binding\n");
+            }
+
+            m_udpsocket.clientlen = sizeof(m_udpsocket.clientaddr);
+            printf("Started server\n");
+            m_isValid = true;
     }
-
-    udpsocket.clientlen = sizeof(udpsocket.clientaddr);
-    // ------------------------------------------------------------------------------------
-
-    // Init stuff related to being a pretend desk (just to show button functionality)
-    for(i=0;i<64;i++) {
-        channels[i].mainlevel=0;
-        channels[i].mute=1;
-        channels[i].trimlevel=10;
-        channels[i].pan=0;
-        channels[i].solo=0;
-        channels[i].rec=0;
-        channels[i].pad.Colour=WHITE;
-        channels[i].pad.Inverted=0;
-        channels[i].mode=0;
-        sprintf(channels[i].pad.TopText," ");
-        sprintf(channels[i].pad.BotText,"Ch %d",i+1);        
-    }
-
-    XTouch FaderBoard(sendpacket,(void*)&udpsocket);
-
-    FaderBoard.RegisterButtonCallback(buttonpressed, (void*)&FaderBoard);
-    FaderBoard.RegisterFaderCallback(faderlevel,(void*)&FaderBoard);
-    FaderBoard.RegisterFaderStateCallback(fadertouch,(void*)&FaderBoard);
-    FaderBoard.RegisterDialCallback(dial,(void*)&FaderBoard);
-
-    RenderPage(&FaderBoard);
-
-    // The main packet processing loop
-    while (1) {
-
-        memset(recvbuf, 0, BUFSIZE);
-        recvlen = recvfrom(udpsocket.sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *) &(udpsocket.clientaddr), &(udpsocket.clientlen));
-        if (recvlen < 0) {
-            perror("ERROR in recvfrom");
-            exit(1);
+     
+    void loop() {
+        try {
+            int recvlen;
+            while(true) {
+                memset(m_buffer, 0, BUFSIZE);
+                recvlen = recvfrom(m_udpsocket.sockfd, m_buffer, BUFSIZE, 0, (struct sockaddr *) &(m_udpsocket.clientaddr), &(m_udpsocket.clientlen));
+                if (recvlen < 0) {
+                    printf("ERROR in recvfrom\n");
+                    throw 1; // Any throw value is fine
+                }
+                printf("Received %u bytes\n", recvlen);
+            }
         }
+        catch (...) {}
+        m_isValid = false;
+    }
 
-        now = time(0);
-        localtm = localtime(&now);
-        FaderBoard.SetTime(localtm);
-        FaderBoard.HandlePacket(recvbuf,recvlen);
+public:
+    XTouchUDPServer() {
+        start_server();
+        m_thread = std::thread(&XTouchUDPServer::loop, this);
+        m_thread.detach();
+    }
+};
+
+void main2() {
+    std::thread controller(ThreadWatchDog);
+
+    while(true) {
+        std::this_thread::sleep_for(std::chrono::hours(1));
+    }
+    assert(false && "Never should reach here");
+}
+
+template<typename T>
+class WatchDogTarget {
+private:
+    using Type = T;
+    IServer *Target;
+
+    bool Dead() {
+        if (!Target) { return true; }
+        return !Target->IsValid();
+    }
+public:
+    void TestAndRestart() {
+        if (Dead()) {
+            printf("WatchDogTarget: server died\n");
+            delete Target;
+            Target = new Type();
+        }
+    }
+
+};
+
+void ThreadWatchDog() {
+    printf("ThreadController spawned\n");
+    WatchDogTarget<XTouchUDPServer> xtouch;
+    while(true) {
+        xtouch.TestAndRestart();
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }
 }
+

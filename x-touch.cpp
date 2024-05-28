@@ -212,7 +212,7 @@ void XTouch::SetTime(struct tm* t) {
 // 84 to 90 - Transport buttons (marker, nudge, cycle, drop, replace, click, solo)
 // 91 to 95 - Playback control (rewind, fast-forward, stop, play, record)
 // 96 to 100 - Cursor keys (up, down, left, right, middle)
-// 101 Scrub
+// // 101 Scrub
 // 113 Smpte
 // 114 Beats
 // 115 Solo - on 7-seg display
@@ -413,7 +413,7 @@ void XTouch::SendAllBoard() {
 
 void XTouch::SendPacket(unsigned char *buffer, unsigned int len)
 {
-    for(int i = 0; i < 50000; i++) {}
+    for(int i = 0; i < 70000; i++) {}
     mPacketSendHandler(mPPacketData, buffer,len);
 }
 
