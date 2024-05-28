@@ -14,7 +14,6 @@ XTouchController::XTouchController() {
         if (attr == 0) { return; } // No special handling for button up, yet.
 
         if(!HandleButton(static_cast<xt_buttons>(button))) {
-            xt.SetSingleButton(button, FLASHING);
             printf("Button %u hit, state = %u\n", button, attr);
         }
     });
