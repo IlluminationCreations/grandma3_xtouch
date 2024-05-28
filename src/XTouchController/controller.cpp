@@ -71,21 +71,6 @@ void PlaybackGroup::Update() {
 
 }
 
-void ControlState::Update(uint32_t value) {
-    if (value == m_value) { return; }
-
-    m_value = value;
-    m_dirty = true;
-}
-
-bool ControlState::IsDirty() {
-    return m_dirty;
-}
-
-uint32_t ControlState::GetValue() {
-    return m_value;
-}
-
 bool XTouchController::HandleButton(xt_buttons btn) {
     xt_alias_btn btnAlias = static_cast<xt_alias_btn>(btn);
     if (m_group.m_pinConfigMode || btnAlias == xt_alias_btn::PIN) { m_group.UpdatePinnedChannels(btn); return true; }
@@ -107,7 +92,6 @@ void XTouchController::HandleAddressChange(xt_alias_btn btn) {
         {
             uint32_t offset = btn == xt_alias_btn::PAGE_DEC ? -1 : 1; 
             m_group.ChangePage(offset);
-            m_pageDisplay.Update(m_group.m_page);
             return;
         }
         default: { assert(false); }
@@ -151,6 +135,8 @@ Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
     assert(PHYSICAL_CHANNEL_ID >= 1 && PHYSICAL_CHANNEL_ID <= PHYSICAL_CHANNEL_COUNT);
     m_mainAddress = 1;
     m_subAddress = 1;
+
+
 }
 
 void ChannelGroup::UpdateWatchList() {
@@ -272,9 +258,11 @@ void ChannelGroup::RegisterButtonLightState(std::function<void(xt_buttons, xt_bu
 }
 
 void Channel::Pin(bool state) {
+    if (state == m_pinned) { return; }
     m_pinned = state;
 }
 
 bool Channel::IsPinned() {
     return m_pinned;
 }
+
