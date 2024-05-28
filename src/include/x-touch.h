@@ -160,8 +160,17 @@ enum xt_buttons {
     // Lights
     SMPTE = 113,
     BEATS = 114,
-    SOLO = 115
+    SOLO = 115,
+    END
 };
+enum xt_alias_btn {
+    PIN = xt_buttons::FLIP,
+    PAGE_DEC = xt_buttons::CHANNEL_LEFT,
+    PAGE_INC = xt_buttons::CHANNEL_RIGHT,
+    EXECUTER_SCROLL_RIGHT = xt_buttons::FADER_BANK_LEFT,
+    EXECUTER_SCROLL_LEFT = xt_buttons::FADER_BANK_RIGHT
+};
+
 
 typedef struct {
     char TopText[8];
@@ -169,6 +178,12 @@ typedef struct {
     xt_colours_t Colour;
     int Inverted;
 } xt_ScribblePad_t;
+
+namespace ButtonUtils {
+    int MuteButtonToChannel(xt_buttons button);
+    int SelectButtonToChannel(xt_buttons button);
+    bool AddressChangingButton(xt_buttons button);
+}
 
 class XTouch {
     public:
@@ -208,8 +223,7 @@ class XTouch {
         void SendAllScribble();
         void SendSingleButton(unsigned char n);
         void SendAllButtons();
-        void SendSingleDial(unsigned char n);
-        void SendAllDials();
+        void SendSingleDial(unsigned char n, int value);
         void SendSingleFader(unsigned char n);
         void SendAllFaders();
         void SendAllBoard();
@@ -227,7 +241,6 @@ class XTouch {
         time_t mLastIdle;
         int mFullRefreshNeeded;
         xt_button_state_t mButtonLEDStates[127];
-        unsigned int mDialLeds[8];
         unsigned char mMeterLevels[8];
         unsigned int mFaderLevels[9];
         unsigned char mSegmentCache[12];

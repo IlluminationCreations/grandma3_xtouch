@@ -1,1 +1,2 @@
 add_library(XTOUCHCONTROLLER_LIB controller.cpp)
+target_link_libraries(XTOUCHCONTROLLER_LIB XTOUCH_LIB)

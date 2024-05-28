@@ -56,7 +56,6 @@ XTouch::XTouch() {
         mButtonLEDStates[i]=OFF;
     }
     for(i=0;i<8;i++) {
-        mDialLeds[i]=0;
         mMeterLevels[i]=0;
     }
     for(i=0;i<9;i++) {
@@ -121,7 +120,6 @@ void XTouch::SetMeterLevel(int channel, int level)
 {
     if ((channel<0)||(channel>8)||(level<0)||(level>9)) return;
     mMeterLevels[channel]=level;
-    SendAllMeters();
 }
 
 // If using the meters then you must frequently call SendAllMeters(), even if the levels don't change, as they naturally decay.
@@ -142,8 +140,8 @@ void XTouch::SendAllMeters()
 void XTouch::SetDialPan(int channel, int position)
 {
     if ((position<-6)||(position>6)) return;
-    mDialLeds[channel]=1<<(position+6);
-    SendSingleDial(channel);
+    int v = 1<<(position+6);
+    SendSingleDial(channel, v);
 }
 
 // Places a growing bar graph around the dial to indicate level
@@ -157,8 +155,7 @@ void XTouch::SetDialLevel(int channel, int level)
     for(i=0;i<level;i++) {
         v+=1<<i;
     }
-    mDialLeds[channel]=v;
-    SendSingleDial(channel);
+    SendSingleDial(channel, v);
 }
 
 // Displays the integer provided in the 'assignment' display
@@ -328,30 +325,16 @@ void XTouch::SetSegments(unsigned char segment, unsigned char value) {
     mSegmentCache[segment]=value&0x7F;
 }
 
-void XTouch::SendSingleDial(unsigned char n)
+void XTouch::SendSingleDial(unsigned char n, int value)
 {
     unsigned char sendbuf[33];
     sendbuf[0]=0xb0;
     sendbuf[1]=0x30+n;
-    sendbuf[2]=mDialLeds[n]&0x7F;
+    sendbuf[2]=value&0x7F;
     sendbuf[3]=0x38+n;
-    sendbuf[4]=(mDialLeds[n]>>7)&0x7F;
+    sendbuf[4]=(value>>7)&0x7F;
     SendPacket(sendbuf,5);
 
-}
-
-void XTouch::SendAllDials()
-{
-    int i;
-    unsigned char sendbuf[33];
-    sendbuf[0]=0xb0;
-    for(i=0;i<8;i++) {
-        sendbuf[1+i*4]=0x30+i;
-        sendbuf[2+i*4]=mDialLeds[i]&0x7F;
-        sendbuf[3+i*4]=0x38+i;
-        sendbuf[4+i*4]=(mDialLeds[i]>>7)&0x7F;
-    }
-    SendPacket(sendbuf,33);
 }
 
 void XTouch::SendAllScribble()
@@ -406,7 +389,6 @@ void XTouch::SendAllButtons() {
 
 void XTouch::SendAllBoard() {
     SendAllButtons();
-    SendAllDials();
     SendAllFaders();
     SendAllScribble();
     SendSegments();
@@ -512,5 +494,28 @@ void XTouch::CheckIdle() {
             mFullRefreshNeeded=1;
         }
     	mLastIdle=time(NULL);
+    }
+}
+
+namespace ButtonUtils {
+    int MuteButtonToChannel(xt_buttons button) {
+        if (button < FADER_0_MUTE || button > FADER_7_MUTE) { return -1; }
+        return button - FADER_0_MUTE;;
+    }
+
+    int SelectButtonToChannel(xt_buttons button) {
+        if (button < FADER_0_SELECT || button > FADER_7_SELECT) { return -1; }
+        return button - FADER_0_SELECT;
+    }
+    bool AddressChangingButton(xt_buttons button) {
+        switch(button) {
+            case FADER_BANK_LEFT:
+            case FADER_BANK_RIGHT:
+            case CHANNEL_LEFT:
+            case CHANNEL_RIGHT:
+                return true;
+            default:
+                return false;
+        }
     }
 }
