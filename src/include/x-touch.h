@@ -37,10 +37,11 @@ SOFTWARE.
 #pragma once
 #include <time.h>
 #include <functional>
+#include <thread>
+#include <chrono>
 
 using PacketCallback = std::function<void(unsigned char*, uint64_t)>;
 using EventCallback = std::function<void(unsigned char, int)>;
-
 
 enum xt_colours_t { BLACK, RED, GREEN, YELLOW, BLUE, PINK, CYAN, WHITE };
 enum xt_button_state_t { OFF, FLASHING, ON };
@@ -199,7 +200,6 @@ class XTouch {
         void SetDialLevel(int channel, int level);
         void SetFaderLevel(int channel, int level);
         void SetMeterLevel(int channel, int level);
-        void SendAllMeters();
         void SetSingleButton(unsigned char n, xt_button_state_t v);
         void SetScribble(int channel, xt_ScribblePad_t info);
 
@@ -231,6 +231,8 @@ class XTouch {
         void SendSegments();
         void DisplayNumber(unsigned char start, int len, int v,int zeros=0);
         unsigned char SegmentBitmap(char v);
+        void SendAllMeters();
+        void SendAllMetersLoop();
 
         PacketCallback m_packetCallBack;
         EventCallback m_buttonCallBack;
@@ -246,4 +248,6 @@ class XTouch {
         unsigned char mSegmentCache[12];
 
         xt_ScribblePad_t mScribblePads[8];
+
+        std::thread m_soundMeterRefresh;
 };

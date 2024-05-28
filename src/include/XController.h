@@ -135,7 +135,6 @@ private:
     XTouch xt;
     TCPServer *xt_server = nullptr;
     ChannelGroup m_group;
-    std::thread m_meterThread;
     std::thread m_watchDog;
 
     PageDisplayComponent m_pageDisplay;

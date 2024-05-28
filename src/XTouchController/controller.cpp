@@ -32,7 +32,6 @@ XTouchController::XTouchController() {
 
     SpawnServer(SERVER_XT);
 
-    m_meterThread = std::thread(&XTouchController::MeterRefresh, this);
     m_watchDog = std::thread(&XTouchController::WatchDog, this);
     m_group.RegisterMAOutCB([](MaIPCPacket &packet) {});
     m_group.RegisterButtonLightState([&](xt_buttons btn, xt_button_state_t state) {
@@ -44,13 +43,6 @@ void XTouchController::WatchDog() {
     while(true) {
         if (!xt_server->Alive()) { SpawnServer(SERVER_XT); }
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
-    }
-}
-
-void XTouchController::MeterRefresh() {
-    while(true) {
-        xt.SendAllMeters();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
 

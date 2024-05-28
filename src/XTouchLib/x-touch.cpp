@@ -73,6 +73,8 @@ XTouch::XTouch() {
     m_faderCallBack = nullptr;
 
     mFullRefreshNeeded=0;
+
+    m_soundMeterRefresh = std::thread(&XTouch::SendAllMetersLoop, this);
 }
 
 XTouch::~XTouch() {
@@ -132,6 +134,13 @@ void XTouch::SendAllMeters()
         sendbuf[1+i]=(i<<4)+mMeterLevels[i];
     }
     SendPacket(sendbuf,9);
+}
+
+void XTouch::SendAllMetersLoop() {
+    while(true) {
+        SendAllMeters();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
 }
 
 // Places a single mark around the dial to indicate pan position
