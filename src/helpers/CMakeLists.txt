@@ -1,0 +1,1 @@
+add_library(HELPERS_LIB alive.cpp)
