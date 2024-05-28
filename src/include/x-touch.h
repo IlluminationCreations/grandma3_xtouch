@@ -170,7 +170,7 @@ typedef struct {
 
 class XTouch {
     public:
-        XTouch(packet_sender PacketSendHandler, void *data);
+        XTouch();
         ~XTouch();
 
         int HandlePacket(unsigned char *buffer, unsigned int len);

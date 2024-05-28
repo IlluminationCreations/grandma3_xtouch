@@ -48,10 +48,8 @@ bool probe_sent = false;
 
 // Public interfaces
 // You must pass the constructor a function for sending UDP packets back to the XTouch taking two parameters - the data buffer and the length
-XTouch::XTouch(packet_sender PacketSendHandler,void *data) {
+XTouch::XTouch() {
     int i;
-    mPacketSendHandler=PacketSendHandler;
-    mPPacketData=data;
     mLastIdle=0;
     // Set default LED states
     for(i=0;i<127;i++) {
@@ -415,6 +413,7 @@ void XTouch::SendPacket(unsigned char *buffer, unsigned int len)
 {
     for(int i = 0; i < 70000; i++) {}
     mPacketSendHandler(mPPacketData, buffer,len);
+
 }
 
 int XTouch::HandleFaderTouch(unsigned char *buffer, unsigned int len) {
