@@ -45,8 +45,16 @@ SOFTWARE.
 */
 
 #include "x-touch.h"
+#include <chrono>
+#include <thread>
 #include <XController.h>
+#include <assert.h>
 
 int main(int, char**) {
+    XTouchController controller;
+    while(true) {
+        std::this_thread::sleep_for(std::chrono::hours(24));
+    }
+    assert(false && "Should never reach here");
     return 0;
 }
