@@ -9,6 +9,12 @@ XTouchController::XTouchController() {
     {
         xt_server->Send(buffer, len);
     });
+
+    xt.RegisterButtonCallback([&](unsigned char button, unsigned int len)
+    {
+        printf("Button %u hit, state = %u\n", button, len);
+    });
+
     SpawnServer(SERVER_XT);
 }
 
