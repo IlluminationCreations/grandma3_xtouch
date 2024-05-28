@@ -8,6 +8,15 @@ TCPServer::TCPServer(unsigned short port) {
     buffer = malloc(BUFSIZE);
     Bind(port);
 
+void TCPServer::Start() {
+    try
+    {
+        Bind();
+    }
+    catch (...)
+    {
+        SetDead();
+    }
 }
 
 void TCPServer::Bind(unsigned short port) {
@@ -31,10 +40,8 @@ void TCPServer::Bind(unsigned short port) {
         }
 
         m_socket.clientlen = sizeof(m_socket.clientaddr);
-        SetLifeState(true);
     }
     catch (...) {
-        SetLifeState(false);
     }
 
 }

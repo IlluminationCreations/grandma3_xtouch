@@ -2,8 +2,8 @@
 
 class Alive {
 private:
-    bool m_Alive = false;
+    bool m_Alive = true;
 public:
     bool IsAlive();
-    void SetLifeState(bool Alive);
+    void SetDead();
 };

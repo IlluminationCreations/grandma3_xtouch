@@ -5,6 +5,6 @@ bool Alive::IsAlive() {
     return m_Alive;
 }
 
-void Alive::SetLifeState(bool alive) {
-    m_Alive = alive;
+void Alive::SetDead() {
+    m_Alive = false;
 }
