@@ -41,6 +41,7 @@ SOFTWARE.
 typedef void (*packet_sender)(void *,unsigned char*, unsigned int); // User pointer, Packet buffer pointer, Packet length
 typedef void (*callback)(void *,unsigned char, int); // User pointer, Object ID, New value
 using PacketCallback = std::function<void(unsigned char*, uint64_t)>;
+using EventCallback = std::function<void(unsigned char, int)>;
 
 
 enum xt_colours_t { BLACK, RED, GREEN, YELLOW, BLUE, PINK, CYAN, WHITE };
@@ -190,10 +191,10 @@ class XTouch {
         void SetScribble(int channel, xt_ScribblePad_t info);
 
     
-        void RegisterFaderCallback(callback Handler, void *data);
-        void RegisterFaderStateCallback(callback Handler, void *data);
-        void RegisterDialCallback(callback Handler, void *data);
-        void RegisterButtonCallback(callback Handler, void *data); 
+        void RegisterFaderCallback(EventCallback Handler);
+        void RegisterFaderStateCallback(EventCallback Handler);
+        void RegisterDialCallback(EventCallback Handler);
+        void RegisterButtonCallback(EventCallback Handler); 
         void RegisterPacketSender(PacketCallback handler);     
 
     private:
@@ -219,16 +220,11 @@ class XTouch {
         void DisplayNumber(unsigned char start, int len, int v,int zeros=0);
         unsigned char SegmentBitmap(char v);
 
-        
         PacketCallback m_packetCallBack;
-        callback mButtonCallbackHandler;
-        callback mDialCallbackHandler;
-        callback mLevelCallbackHandler;
-        callback mFaderStateCallbackHandler;
-        void *mButtonCallbackData;
-        void *mDialCallbackData;
-        void *mLevelCallbackData;
-        void *mFaderStateCallbackData;
+        EventCallback m_buttonCallBack;
+        EventCallback m_dialCallBack;
+        EventCallback m_faderStateCallBack;
+        EventCallback m_faderCallBack;
 
         time_t mLastIdle;
         int mFullRefreshNeeded;

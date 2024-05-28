@@ -66,10 +66,13 @@ XTouch::XTouch() {
     for(i=0;i<8;i++) {
         mScribblePads[i].Colour=WHITE;
     }
-    mButtonCallbackHandler=NULL;
-    mDialCallbackHandler=NULL;
-    mLevelCallbackHandler=NULL;
-    mFaderStateCallbackHandler=NULL;
+
+    m_packetCallBack = nullptr;
+    m_buttonCallBack = nullptr;
+    m_dialCallBack = nullptr;
+    m_faderStateCallBack = nullptr;
+    m_faderCallBack = nullptr;
+
     mFullRefreshNeeded=0;
 }
 
@@ -78,27 +81,23 @@ XTouch::~XTouch() {
 }
 
 // The handler registered here will be called whenever a fader is moved
-void XTouch::RegisterFaderCallback(callback Handler, void *data) {
-    mLevelCallbackHandler=Handler;
-    mLevelCallbackData=data;
+void XTouch::RegisterFaderCallback(EventCallback handler) {
+    m_faderCallBack = handler;
 }
 
 // The handler registered here will be called whenever a fader is touched or released
-void XTouch::RegisterFaderStateCallback(callback Handler, void *data) {
-    mFaderStateCallbackHandler=Handler;
-    mFaderStateCallbackData=data;
+void XTouch::RegisterFaderStateCallback(EventCallback handler) {
+    m_faderCallBack = handler;
 }
 
 // The handler registered here will be called whenever a dial or jog wheel is turned
-void XTouch::RegisterDialCallback(callback Handler, void *data) {
-    mDialCallbackHandler=Handler;
-    mDialCallbackData=data;
+void XTouch::RegisterDialCallback(EventCallback handler) {
+    m_dialCallBack = handler;
 }
 
 // The handler registered here will be called whenever a button is pressed or released
-void XTouch::RegisterButtonCallback(callback Handler, void *data) {
-    mButtonCallbackHandler=Handler;
-    mButtonCallbackData=data;
+void XTouch::RegisterButtonCallback(EventCallback handler) {
+    m_buttonCallBack = handler;
 }
 
 void XTouch::RegisterPacketSender(PacketCallback handler) {
@@ -424,7 +423,7 @@ int XTouch::HandleFaderTouch(unsigned char *buffer, unsigned int len) {
     int fader;
     if ((len==3)&&(buffer[0]==0x90)&&(buffer[1]>=0x68)&&(buffer[1]<=0x70)) {
         fader=buffer[1]-0x68;
-        if (mFaderStateCallbackHandler) mFaderStateCallbackHandler(mFaderStateCallbackData,fader,(buffer[2]!=0));
+        if (m_faderStateCallBack) m_faderStateCallBack(fader,(buffer[2]!=0));
         return 1;
     }
     return 0;
@@ -436,7 +435,7 @@ int XTouch::HandleLevel(unsigned char *buffer, unsigned int len) {
     if ((len==3)&&((buffer[0]&0xf0)==0xe0)) {
         channel=buffer[0]&0x0f;
         level=buffer[1]+(buffer[2]<<7);
-        if (mLevelCallbackHandler) mLevelCallbackHandler(mLevelCallbackData, channel, level);
+        if (m_faderCallBack) m_faderCallBack(channel, level);
         return 1;
     }
     return 0;
@@ -444,11 +443,11 @@ int XTouch::HandleLevel(unsigned char *buffer, unsigned int len) {
 
 int XTouch::HandleRotation(unsigned char *buffer, unsigned int len) {
     if ((len==3)&&(buffer[0]==0xb0)) {
-        if (mDialCallbackHandler) {
+        if (m_dialCallBack) {
             if ((buffer[2]&0x40)==0x40) {
-                mDialCallbackHandler(mDialCallbackData, buffer[1], 0-(buffer[2]&0x0f));
+                m_dialCallBack(buffer[1], 0-(buffer[2]&0x0f));
             } else {
-                mDialCallbackHandler(mDialCallbackData, buffer[1], buffer[2]&0x0f);                
+                m_dialCallBack(buffer[1], buffer[2]&0x0f);                
             }
         }
         return 1;
@@ -458,7 +457,7 @@ int XTouch::HandleRotation(unsigned char *buffer, unsigned int len) {
 
 int XTouch::HandleButton(unsigned char *buffer, unsigned int len) {
     if ((len==3)&&(buffer[0]==0x90)) {
-        if (mButtonCallbackHandler) mButtonCallbackHandler(mButtonCallbackData, buffer[1], (buffer[2]!=0));
+        if (m_buttonCallBack) m_buttonCallBack(buffer[1], (buffer[2]!=0));
         return 1;
     }
     return 0;
