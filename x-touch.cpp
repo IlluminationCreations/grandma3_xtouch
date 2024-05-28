@@ -44,6 +44,7 @@ unsigned char proberesponse[] = { 0xf0, 0x00, 0x20, 0x32, 0x58, 0x54, 0x01, 0xf7
 unsigned char probeb[] =        { 0xf0, 0x00, 0x00, 0x66, 0x58, 0x01, 0x30, 0x31, 0x35, 0x36, 0x34, 0x30, 0x36, 0x36, 0x37, 0x34, 0x30, 0xf7 };
 unsigned char probec[] =        { 0xf0, 0x00, 0x00, 0x66, 0x58, 0x01, 0x30, 0x31, 0x35, 0x36, 0x34, 0x30, 0x41, 0x38, 0x36, 0x44, 0x35, 0xf7 };
 unsigned char idlepacket[] =    { 0xf0, 0x00, 0x00, 0x66, 0x14, 0x00, 0xf7 };
+bool probe_sent = false;
 
 // Public interfaces
 // You must pass the constructor a function for sending UDP packets back to the XTouch taking two parameters - the data buffer and the length
@@ -412,6 +413,7 @@ void XTouch::SendAllBoard() {
 
 void XTouch::SendPacket(unsigned char *buffer, unsigned int len)
 {
+    for(int i = 0; i < 50000; i++) {}
     mPacketSendHandler(mPPacketData, buffer,len);
 }
 
@@ -461,7 +463,7 @@ int XTouch::HandleButton(unsigned char *buffer, unsigned int len) {
 
 int XTouch::HandleProbe(unsigned char *buffer, unsigned int len) {
     if ((len==sizeof(probe))&&(memcmp(buffer, probe, sizeof(probe))==0)) {
-        SendPacket(proberesponse, sizeof(proberesponse));
+        if (!probe_sent) { probe_sent = true; SendPacket(proberesponse, sizeof(proberesponse)); }
         return 1;
     }
     if ((len==sizeof(probeb))&&(memcmp(buffer, probeb, sizeof(probeb))==0)) {
