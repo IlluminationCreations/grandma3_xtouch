@@ -11,7 +11,7 @@ constexpr unsigned int MAX_CHANNEL_COUNT = 90;
 enum class ControlType { UNKNOWN, SEGMENT, FADER, KNOB };
 enum class SegmentID { UNKNOWN, PAGE };
 namespace IPCMessageType {
-    enum RequestType {UNKNOWN, UPDATE_ENCODER_WATCHLIST};
+    enum RequestType {UNKNOWN, UPDATE_ENCODER_WATCHLIST, SET_PAGE};
 }
 
 struct MaIPCPacket {
@@ -23,7 +23,8 @@ struct MaIPCPacket {
             unsigned int channel; // eg x01, x02, x03
 
         } EncoderRequest[8];
-    };
+        uint32_t page;
+    } payload;
 };
 
 class XTouchData {

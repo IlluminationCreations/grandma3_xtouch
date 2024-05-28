@@ -164,7 +164,7 @@ void ChannelGroup::UpdateWatchList() {
     packet.type = IPCMessageType::UPDATE_ENCODER_WATCHLIST;
 
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-        auto channel_data = &packet.EncoderRequest[i];
+        auto channel_data = &packet.payload.EncoderRequest[i];
 
         channel_data->channel = m_channels[i].m_subAddress;
         channel_data->page = m_channels[i].m_mainAddress;
@@ -193,6 +193,13 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
     }
 
     UpdateWatchList();
+
+    if(cb_RequestMaData) {
+        MaIPCPacket packet;
+        packet.type = IPCMessageType::SET_PAGE;
+        packet.payload.page = m_page;
+        cb_RequestMaData(packet);
+    }
 }
 
 void ChannelGroup::ScrollPage(int32_t scrollOffset) {
@@ -226,6 +233,7 @@ void ChannelGroup::TogglePinConfigMode() {
     m_pinConfigMode = !m_pinConfigMode;
     // if (m_pinConfigMode) {printf("Entering pin config mode\n"); }
     // if (!m_pinConfigMode) {printf("Exiting pin config mode\n"); }
+    if (!cb_SendButtonLightState) { return; } // No callback for sending light state data, can't do anything
 
     if (m_pinConfigMode) {
         cb_SendButtonLightState(static_cast<xt_buttons>(xt_alias_btn::PIN), xt_button_state_t::ON);
