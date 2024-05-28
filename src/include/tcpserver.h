@@ -1,17 +1,18 @@
 #pragma once
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <alive.h>
 
 constexpr int BUFSIZE = 1058;
 
-class TCPServer {
+class TCPServer : Alive {
 private:
     struct {
         int sockfd;
         socklen_t clientlen;
         struct sockaddr_in clientaddr;
     } m_socket;
-    bool m_Alive = false;
+
     void *buffer;
 
 private:

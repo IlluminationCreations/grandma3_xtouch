@@ -31,13 +31,14 @@ void TCPServer::Bind(unsigned short port) {
         }
 
         m_socket.clientlen = sizeof(m_socket.clientaddr);
+        SetLifeState(true);
     }
     catch (...) {
-        m_Alive = false;
+        SetLifeState(false);
     }
-    m_Alive = true;
+
 }
 
 bool TCPServer::Alive() {
-    return m_Alive;
+    return IsAlive();
 }
