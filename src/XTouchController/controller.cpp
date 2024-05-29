@@ -2,6 +2,19 @@
 #include <chrono>
 #include <assert.h>
 #include <stdio.h>
+#include <set>
+
+bool operator<(const Address& a, const Address& b) {
+    if (a.mainAddress == b.mainAddress && a.subAddress == b.subAddress) { return false; }
+
+    if (a.mainAddress < b.mainAddress) {
+        return true;
+    } else if (a.mainAddress == b.mainAddress) {
+        return a.subAddress < b.subAddress;
+    } else {
+        return false;
+    }
+}
 
 XTouchController::XTouchController() {
     SpawnServer(SERVER_XT);
@@ -143,8 +156,6 @@ Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
         snprintf(m_scribblePad.BotText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
         g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad); // PHYSICAL_CHANNEL_ID is 1-indexed, scribble is 0-indexed
     });
-
-
 }
 
 void Channel::UpdateScribbleAddress() {
@@ -173,18 +184,24 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
     if (pageOffset == -1 && cur_page > 1) { m_page->Set(cur_page - 1);;} 
     if (pageOffset == 1 && cur_page < MAX_PAGE_COUNT) { m_page->Set(cur_page + 1); } 
     if (m_page->Get() == cur_page) { return; }
-    
+    GenerateChannelWindows();
+
     // When changing page, we reset the channel subaddress
     m_channelOffset = 0;
-    uint32_t m_not_pinned_i = 1;
 
+    auto mainAddress = m_page->Get();
+    auto &window = m_channelWindows[m_channelOffset];
+    auto it = window.begin();
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
         auto &channel = m_channels[i]; if (channel.IsPinned()) { continue; }
-        auto address = m_channels[i].m_address->Get();
+        assert(it != window.end());
 
-        address.mainAddress = m_page->Get();
-        address.subAddress = m_not_pinned_i++;
+        Address address;
+        address.mainAddress = mainAddress;
+        address.subAddress = *it;
         m_channels[i].m_address->Set(address);
+
+        it++;
     }
 
     UpdateWatchList();
@@ -199,41 +216,71 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
 
 void ChannelGroup::ScrollPage(int32_t scrollOffset) {
     assert(scrollOffset == -1 || scrollOffset == 1);
+    assert(m_channelWindows.size() > 0 && "Channel windows not generated");
 
     uint32_t original_offset = m_channelOffset;
     if (scrollOffset == -1 && m_channelOffset > 0) { m_channelOffset--;}
     if (scrollOffset == 1) { m_channelOffset++; }
     if (m_channelOffset == original_offset) { return; }
+    GenerateChannelWindows();
 
-    uint32_t width = 0;
-    for(int i = 0; i < 8; i++) {if (!m_channels[i].IsPinned()) { width++; }}
-    uint32_t adjusted_base_subAddress = 1 + (width * m_channelOffset);
-
-    if ((adjusted_base_subAddress + width) > 90) {
-        // Revert and return
-        m_channelOffset--;
-        return;
-    }
-
-    uint32_t pins_within_window = 0;
+    auto mainAddress = m_page->Get();
+    auto &window = m_channelWindows[m_channelOffset];
+    auto &&it = window.begin();
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-        if (!m_channels[i].IsPinned()) { continue; }
-        auto Address = m_channels[i].m_address->Get();
-        if (Address.subAddress >= adjusted_base_subAddress && Address.subAddress <= (adjusted_base_subAddress + width)) {
-            pins_within_window++;
-        }
-    }
-
-    for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
+        assert(it != window.end());
         auto &channel = m_channels[i]; if (channel.IsPinned()) { continue; }
-        auto address = m_channels[i].m_address->Get();
 
-        address.mainAddress = m_page->Get();
-        address.subAddress = adjusted_base_subAddress++;
+        Address address;
+        address.mainAddress = mainAddress;
+        address.subAddress = *it;
         m_channels[i].m_address->Set(address);
+
+        it++;
     }
+    assert(it == window.end());
 
     UpdateWatchList();
+}
+
+void ChannelGroup::GenerateChannelWindows() {
+    const auto pinned_addresses = [&]() -> std::set<Address> {
+        auto pinned = std::set<Address>();
+        uint32_t inserted = 0;
+
+        for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
+            auto &channel = m_channels[i]; 
+            if (!channel.IsPinned()) { continue; }
+
+            Address address = channel.m_address->Get();
+            pinned.insert(address);
+            inserted++;
+            printf("Pinned %u.%u\n", address.mainAddress, address.subAddress);
+        }
+
+        assert(pinned.size() == inserted && "Pinned channels not unique");
+        return std::move(pinned);
+    }();
+
+    const uint32_t window_width = PHYSICAL_CHANNEL_COUNT - pinned_addresses.size();
+
+    std::vector<std::vector<uint32_t>> windows;
+    std::vector<uint32_t> cur_window;
+    auto cur_page = m_page->Get();
+    for(unsigned int i = 1; i <= 90; i++) {
+        if (cur_window.size() == window_width) {
+            windows.push_back(cur_window);
+            cur_window.clear();
+        }
+
+        Address address = {cur_page, i};
+        if (pinned_addresses.find(address) != pinned_addresses.end()) { 
+            continue; 
+        }
+        cur_window.push_back(i);
+    }
+    if (cur_window.size() > 0) { windows.push_back(cur_window); }
+    m_channelWindows = std::move(windows);
 }
 
 void ChannelGroup::TogglePinConfigMode() {
@@ -274,6 +321,7 @@ ChannelGroup::ChannelGroup() {
     m_page = new PageObserver(1, [](uint32_t page) { 
         g_xtouch->SetAssignment(page);
     });
+    GenerateChannelWindows();
 }
 
 void ChannelGroup::RegisterMAOutCB(std::function<void(MaIPCPacket&)> requestCb) {
@@ -282,7 +330,15 @@ void ChannelGroup::RegisterMAOutCB(std::function<void(MaIPCPacket&)> requestCb) 
 
 
 void Channel::Pin(bool state) {
+    if (m_pinned == state) { return; }
+
     m_pinned = state;
+    if (state) {
+        m_scribblePad.Colour = xt_colours_t::PINK;
+    } else {
+        m_scribblePad.Colour = xt_colours_t::WHITE;
+    }
+    g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
 }
 
 bool Channel::IsPinned() {

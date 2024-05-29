@@ -99,7 +99,11 @@ namespace ChannelGroup_Tests {
                 } 
 
                 assert(page == 2);
-                assert(channel == ch_i++);
+                if (channel != ch_i++) {
+                    printf("Expected: %u, Got: %u\n", ch_i-1, channel);
+                    Helper_PrintPacketEncoderRequest(packet);
+                    assert(false && "Channel did not match expected");
+                }
             }
             handled = true;
         });
@@ -117,7 +121,7 @@ namespace ChannelGroup_Tests {
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
             if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
-            Helper_PrintPacketEncoderRequest(packet);
+
             auto ch_i = 1;
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
                 auto channel_data = &packet.payload.EncoderRequest[i];
@@ -135,7 +139,11 @@ namespace ChannelGroup_Tests {
                 } 
 
                 assert(page == 2);
-                assert(channel == ch_i++);
+                if (channel != ch_i++) {
+                    printf("Expected: %u, Got: %u\n", ch_i-1, channel);
+                    Helper_PrintPacketEncoderRequest(packet);
+                    assert(false && "Channel did not match expected");
+                }
             }
             handled = true;
         });
@@ -179,7 +187,11 @@ namespace ChannelGroup_Tests {
                 } 
 
                 assert(page == 2);
-                assert(channel == ch_i++);
+                if (channel != ch_i++) {
+                    printf("Expected: %u, Got: %u\n", ch_i-1, channel);
+                    Helper_PrintPacketEncoderRequest(packet);
+                    assert(false && "Channel did not match expected");
+                }
             }
             handled = true;
         });
@@ -225,7 +237,11 @@ namespace ChannelGroup_Tests {
                 } 
 
                 assert(page == 3);
-                assert(channel == ch_i++);
+                if (channel != ch_i++) {
+                    printf("Expected: %u, Got: %u\n", ch_i-1, channel);
+                    Helper_PrintPacketEncoderRequest(packet);
+                    assert(false && "Channel did not match expected");
+                }
             }
             handled = true;
         });
@@ -250,9 +266,8 @@ namespace ChannelGroup_Tests {
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
             if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
-            Helper_PrintPacketEncoderRequest(packet);
 
-            auto ch_i = 8; 
+            auto ch_i = 9; 
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
                 auto channel_data = &packet.payload.EncoderRequest[i];
                 auto channel = channel_data->channel;
@@ -316,6 +331,70 @@ namespace ChannelGroup_Tests {
         group.ScrollPage(1);
         assert(handled);
     }
+    // Check that if we scroll forward, pin a channel, scroll back, then forward again, the pinned channel
+    // should not be seen twice.
+    void CheckPinNotSeenTwice1() {
+        printf("-> Running ChannelGroup_Tests::CheckPinNotSeenTwice1\n");
+        ChannelGroup group;
+
+        group.ScrollPage(1);
+        group.UpdatePinnedChannels(static_cast<xt_buttons>(xt_alias_btn::PIN));
+        group.UpdatePinnedChannels(xt_buttons::FADER_1_SELECT);
+        group.ScrollPage(-1);
+
+        // Test pinning first channel, then scroll right.
+        // There will only be 7 channels available for reassignment,
+        // so we expect physical channel 1 to stay on channel 1, then
+        // physical channel 2 should be [(width * page_offset) + i]
+        // where width = number of physical channels available for reassignment
+        bool handled = false;
+        group.RegisterMAOutCB([&](MaIPCPacket &packet) {
+            if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
+
+            for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
+                auto channel_data = &packet.payload.EncoderRequest[i];
+                auto channel = channel_data->channel;
+                auto page = channel_data->page;
+                if (i == 1) { // Physical channel that was pinned
+                    assert(page == 1); 
+                    assert(channel == 10);
+                    continue;
+                } 
+                if (i == 7) { // Last item in list
+                    assert(channel == 15);
+                }
+
+                assert(channel != 10);
+            }
+            handled = true;
+        });
+        group.ScrollPage(1);
+        assert(handled); handled = false;
+
+        // Fix bug where after fixing issue above, the last channel on the previous scroll page
+        // was then assigned to the first channel on the next page.
+        group.RegisterMAOutCB([&](MaIPCPacket &packet) {
+            if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
+
+            for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
+                auto channel_data = &packet.payload.EncoderRequest[i];
+                auto channel = channel_data->channel;
+                auto page = channel_data->page;
+                if (i == 0) { // Physical channel that was pinned
+                    if (channel == 15) {
+                        Helper_PrintPacketEncoderRequest(packet);
+                        assert(false && "Channel did not match expected");
+                    }
+                    continue;
+                } 
+            }
+            handled = true;
+        });
+        group.ScrollPage(1);
+        assert(handled);
+
+
+    }
 }
 
 int main(int, char**) {
@@ -331,6 +410,7 @@ int main(int, char**) {
     ChannelGroup_Tests::CheckPinChangePageLog4();
     ChannelGroup_Tests::CheckPinScrollPage();
     ChannelGroup_Tests::CheckPinChangePageAndScroll();
+    ChannelGroup_Tests::CheckPinNotSeenTwice1();
     // ChannelGroup_Tests::CheckPinScrollForwardTestBack();
 
     printf("---------------- TESTING COMPLETE ----------------\n");

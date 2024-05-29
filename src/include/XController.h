@@ -41,7 +41,9 @@ class PlaybackGroup {
 struct Address {
     uint32_t mainAddress;
     uint32_t subAddress;
+
 };
+bool operator<(const Address& a, const Address& b);
 
 class AddressObserver {
     Address m_address;
@@ -92,12 +94,14 @@ public:
 private:
     void UpdateWatchList(); 
     void TogglePinConfigMode();
+    void GenerateChannelWindows();
 
     // CBs
     std::function<void(MaIPCPacket&)> cb_RequestMaData;
 
     // "Other"
     Channel *m_channels;
+    std::vector<std::vector<uint32_t>> m_channelWindows;
 };
 
 class XTouchController {
