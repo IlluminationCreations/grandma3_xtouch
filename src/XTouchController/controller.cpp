@@ -132,10 +132,23 @@ void ChannelGroup::UpdatePinnedChannels(xt_buttons button) {
 
 Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
     assert(PHYSICAL_CHANNEL_ID >= 1 && PHYSICAL_CHANNEL_ID <= PHYSICAL_CHANNEL_COUNT);
-    m_mainAddress = 1;
-    m_subAddress = 1;
+    m_scribblePad = {
+        .TopText = {0},
+        .BotText = {0},
+        .Colour = xt_colours_t::WHITE,
+        .Inverted = 1
+    };
+    m_address = new AddressObserver({1, id}, [&](Address address) {
+        snprintf(m_scribblePad.TopText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
+        snprintf(m_scribblePad.BotText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
+        g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad); // PHYSICAL_CHANNEL_ID is 1-indexed, scribble is 0-indexed
+    });
 
 
+}
+
+void Channel::UpdateScribbleAddress() {
+    // g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID, m_scribblePad);
 }
 
 void ChannelGroup::UpdateWatchList() {
@@ -144,9 +157,10 @@ void ChannelGroup::UpdateWatchList() {
 
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
         auto channel_data = &packet.payload.EncoderRequest[i];
+        auto address = m_channels[i].m_address->Get();
 
-        channel_data->channel = m_channels[i].m_subAddress;
-        channel_data->page = m_channels[i].m_mainAddress;
+        channel_data->channel = address.subAddress;
+        channel_data->page = address.mainAddress;
     }
 
     if(cb_RequestMaData) { cb_RequestMaData(packet); }
@@ -165,10 +179,12 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
     uint32_t m_not_pinned_i = 1;
 
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-        auto &channel = m_channels[i];
-        if (channel.IsPinned()) { continue; }
-        channel.m_mainAddress = m_page->Get();
-        channel.m_subAddress = m_not_pinned_i++;
+        auto &channel = m_channels[i]; if (channel.IsPinned()) { continue; }
+        auto address = m_channels[i].m_address->Get();
+
+        address.mainAddress = m_page->Get();
+        address.subAddress = m_not_pinned_i++;
+        m_channels[i].m_address->Set(address);
     }
 
     UpdateWatchList();
@@ -185,7 +201,8 @@ void ChannelGroup::ScrollPage(int32_t scrollOffset) {
     assert(scrollOffset == -1 || scrollOffset == 1);
 
     uint32_t original_offset = m_channelOffset;
-    if (scrollOffset == -1 && m_channelOffset > 1) { m_channelOffset--;} else { m_channelOffset++; }
+    if (scrollOffset == -1 && m_channelOffset > 0) { m_channelOffset--;}
+    if (scrollOffset == 1) { m_channelOffset++; }
     if (m_channelOffset == original_offset) { return; }
 
     uint32_t width = 0;
@@ -198,11 +215,22 @@ void ChannelGroup::ScrollPage(int32_t scrollOffset) {
         return;
     }
 
+    uint32_t pins_within_window = 0;
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-        auto &channel = m_channels[i];
-        if (channel.IsPinned()) { continue; }
-        channel.m_mainAddress = m_page->Get();
-        channel.m_subAddress = adjusted_base_subAddress + i;
+        if (!m_channels[i].IsPinned()) { continue; }
+        auto Address = m_channels[i].m_address->Get();
+        if (Address.subAddress >= adjusted_base_subAddress && Address.subAddress <= (adjusted_base_subAddress + width)) {
+            pins_within_window++;
+        }
+    }
+
+    for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
+        auto &channel = m_channels[i]; if (channel.IsPinned()) { continue; }
+        auto address = m_channels[i].m_address->Get();
+
+        address.mainAddress = m_page->Get();
+        address.subAddress = adjusted_base_subAddress++;
+        m_channels[i].m_address->Set(address);
     }
 
     UpdateWatchList();
@@ -242,7 +270,6 @@ ChannelGroup::ChannelGroup() {
     m_channels = (Channel*)(malloc(sizeof(Channel) * PHYSICAL_CHANNEL_COUNT));
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
         auto channel = new (&m_channels[i]) Channel(i + 1);
-        channel->m_subAddress = i + 1;
     }
     m_page = new PageObserver(1, [](uint32_t page) { 
         g_xtouch->SetAssignment(page);
@@ -272,4 +299,16 @@ uint32_t PageObserver::Get() {
 void PageObserver::Set(uint32_t page) {
     m_page = page;
     m_updateCb(m_page);
+}
+
+AddressObserver::AddressObserver(Address address, std::function<void(Address)> updateCb) {
+    m_updateCb = updateCb;
+    Set(address);
+}
+Address AddressObserver::Get() {
+    return m_address;
+}
+void AddressObserver::Set(Address address) {
+    m_address = address;
+    m_updateCb(m_address);
 }

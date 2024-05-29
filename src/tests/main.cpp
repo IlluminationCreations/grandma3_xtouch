@@ -117,7 +117,7 @@ namespace ChannelGroup_Tests {
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
             if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
-
+            Helper_PrintPacketEncoderRequest(packet);
             auto ch_i = 1;
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
                 auto channel_data = &packet.payload.EncoderRequest[i];
@@ -240,7 +240,7 @@ namespace ChannelGroup_Tests {
         ChannelGroup group;
   
         group.UpdatePinnedChannels(static_cast<xt_buttons>(xt_alias_btn::PIN));
-        group.UpdatePinnedChannels(xt_buttons::FADER_0_SELECT);
+        group.UpdatePinnedChannels(xt_buttons::FADER_5_SELECT);
 
         // Test pinning first channel, then scroll right.
         // There will only be 7 channels available for reassignment,
@@ -250,21 +250,24 @@ namespace ChannelGroup_Tests {
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
             if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
-            // Helper_PrintPacketEncoderRequest(packet);
+            Helper_PrintPacketEncoderRequest(packet);
 
-            auto ch_i = 9; 
+            auto ch_i = 8; 
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
                 auto channel_data = &packet.payload.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
-                if (i == 0) { // Physical channel that was pinned
-                    assert(page == 1); 
-                    assert(channel == 1);
+                if (i == 5) { // Physical channel that was pinned
+                    assert(channel == 6);
                     continue;
                 } 
 
                 assert(page == 1);
-                assert(channel == ch_i++); 
+                if (channel != ch_i++) {
+                    printf("Expected: %u, Got: %u\n", ch_i-1, channel);
+                    Helper_PrintPacketEncoderRequest(packet);
+                    assert(false && "Channel did not match expected");
+                }
             }
             handled = true;
         });
@@ -272,8 +275,8 @@ namespace ChannelGroup_Tests {
         group.ScrollPage(1);
         assert(handled);
     }
-    void CheckPinScrollAndChangePage() {
-        printf("-> Running ChannelGroup_Tests::CheckPinScrollAndChangePage\n");
+    void CheckPinChangePageAndScroll() {
+        printf("-> Running ChannelGroup_Tests::CheckPinChangePageAndScroll\n");
         ChannelGroup group;
   
         group.UpdatePinnedChannels(static_cast<xt_buttons>(xt_alias_btn::PIN));
@@ -289,7 +292,7 @@ namespace ChannelGroup_Tests {
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
             if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
 
-            auto ch_i = 9; 
+            auto ch_i = 8; 
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
                 auto channel_data = &packet.payload.EncoderRequest[i];
                 auto channel = channel_data->channel;
@@ -301,7 +304,11 @@ namespace ChannelGroup_Tests {
                 } 
 
                 assert(page == 2);
-                assert(channel == ch_i++); 
+                if (channel != ch_i++) {
+                    printf("Expected: %u, Got: %u\n", ch_i-1, channel);
+                    Helper_PrintPacketEncoderRequest(packet);
+                    assert(false && "Channel did not match expected");
+                }
             }
             handled = true;
         });
@@ -323,7 +330,8 @@ int main(int, char**) {
     ChannelGroup_Tests::CheckPinChangePageLog3();
     ChannelGroup_Tests::CheckPinChangePageLog4();
     ChannelGroup_Tests::CheckPinScrollPage();
-    ChannelGroup_Tests::CheckPinScrollAndChangePage();
+    ChannelGroup_Tests::CheckPinChangePageAndScroll();
+    // ChannelGroup_Tests::CheckPinScrollForwardTestBack();
 
     printf("---------------- TESTING COMPLETE ----------------\n");
 

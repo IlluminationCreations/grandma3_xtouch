@@ -38,9 +38,26 @@ class PlaybackGroup {
     void Update();
 };
 
-class Channel {
+struct Address {
+    uint32_t mainAddress;
+    uint32_t subAddress;
+};
 
-    bool m_pinned;
+class AddressObserver {
+    Address m_address;
+    std::function<void(Address)> m_updateCb;
+public:
+    AddressObserver(Address address, std::function<void(Address)> updateCb);
+    Address Get();
+    void Set(Address address);
+};
+
+class Channel {
+private:
+    void UpdateScribbleAddress();
+
+    xt_ScribblePad_t m_scribblePad;
+    bool m_pinned = false;
 
 public:
     Channel(uint32_t id);
@@ -48,10 +65,7 @@ public:
     bool IsPinned();
 
     const uint32_t PHYSICAL_CHANNEL_ID;
-    // Represents the page that contains this executer/playback (eg `1` in `Page 1.102`)
-    uint32_t m_mainAddress;
-    // Represents the executer within the page (eg `102` in `Page 1.102`)
-    uint32_t m_subAddress;
+    AddressObserver *m_address; // Virtual address / represents channel within MA
 };
 
 class PageObserver {
