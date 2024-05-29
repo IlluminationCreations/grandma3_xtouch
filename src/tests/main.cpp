@@ -312,6 +312,8 @@ namespace ChannelGroup_Tests {
 }
 
 int main(int, char**) {
+    g_xtouch = new XTouch();
+
     printf("------------ Running ChannelGroup tests ------------ \n");
     ChannelGroup_Tests::InitialState();
     ChannelGroup_Tests::ChangePage();

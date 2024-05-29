@@ -36,9 +36,6 @@ XTouchController::XTouchController() {
 
     m_watchDog = std::thread(&XTouchController::WatchDog, this);
     m_group.RegisterMAOutCB([](MaIPCPacket &packet) {});
-    m_group.RegisterButtonLightState([&](xt_buttons btn, xt_button_state_t state) {
-        g_xtouch->SetSingleButton(btn, state);
-    });
 }
 
 void XTouchController::WatchDog() {
@@ -215,28 +212,28 @@ void ChannelGroup::TogglePinConfigMode() {
     m_pinConfigMode = !m_pinConfigMode;
     // if (m_pinConfigMode) {printf("Entering pin config mode\n"); }
     // if (!m_pinConfigMode) {printf("Exiting pin config mode\n"); }
-    if (!cb_SendButtonLightState) { return; } // No callback for sending light state data, can't do anything
+    assert(g_xtouch != nullptr && "XTouch instance not created");
 
     if (m_pinConfigMode) {
-        cb_SendButtonLightState(static_cast<xt_buttons>(xt_alias_btn::PIN), xt_button_state_t::ON);
+        g_xtouch->SetSingleButton(static_cast<xt_buttons>(xt_alias_btn::PIN), xt_button_state_t::ON);
         for(int i = 0; i < sizeof(m_channels); i++) {
             auto select_btn = static_cast<xt_buttons>(FADER_0_SELECT + i);
             auto mute_btn = static_cast<xt_buttons>(FADER_0_MUTE + i);
 
             if (m_channels[i].IsPinned()) {
-                cb_SendButtonLightState(mute_btn, xt_button_state_t::FLASHING);
+                g_xtouch->SetSingleButton(mute_btn, xt_button_state_t::FLASHING);
             } else {
-                cb_SendButtonLightState(select_btn, xt_button_state_t::FLASHING);
+                g_xtouch->SetSingleButton(select_btn, xt_button_state_t::FLASHING);
             }
         }
     }
     else {
-        cb_SendButtonLightState(static_cast<xt_buttons>(xt_alias_btn::PIN), xt_button_state_t::OFF);
+        g_xtouch->SetSingleButton(static_cast<xt_buttons>(xt_alias_btn::PIN), xt_button_state_t::OFF);
         for(int i = 0; i < sizeof(m_channels); i++) {
             auto select_btn = static_cast<xt_buttons>(FADER_0_SELECT + i);
             auto mute_btn = static_cast<xt_buttons>(FADER_0_MUTE + i);
-            cb_SendButtonLightState(select_btn, xt_button_state_t::OFF);
-            cb_SendButtonLightState(mute_btn, xt_button_state_t::OFF);
+            g_xtouch->SetSingleButton(select_btn, xt_button_state_t::OFF);
+            g_xtouch->SetSingleButton(mute_btn, xt_button_state_t::OFF);
         }
     }
 }
@@ -255,9 +252,6 @@ void ChannelGroup::RegisterMAOutCB(std::function<void(MaIPCPacket&)> requestCb) 
     cb_RequestMaData = requestCb;
 }
 
-void ChannelGroup::RegisterButtonLightState(std::function<void(xt_buttons, xt_button_state_t)> lightCb) {
-    cb_SendButtonLightState = lightCb;
-}
 
 void Channel::Pin(bool state) {
     m_pinned = state;

@@ -61,7 +61,6 @@ public:
     void ChangePage(int32_t pageOffset); 
     void ScrollPage(int32_t scrollOffset);
     void RegisterMAOutCB(std::function<void(MaIPCPacket&)> requestCb);
-    void RegisterButtonLightState(std::function<void(xt_buttons, xt_button_state_t)> requestCb);
 
     bool m_pinConfigMode;
     uint32_t m_page; // Concrete concept
@@ -73,7 +72,6 @@ private:
 
     // CBs
     std::function<void(MaIPCPacket&)> cb_RequestMaData;
-    std::function<void(xt_buttons, xt_button_state_t)> cb_SendButtonLightState;
 
     // "Other"
     Channel *m_channels;
