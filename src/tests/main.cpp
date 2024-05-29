@@ -18,7 +18,7 @@ namespace ChannelGroup_Tests {
     void InitialState() {
         printf("-> Running ChannelGroup_Tests::InitialState\n");
         ChannelGroup group;
-        assert(group.m_page == 1);
+        assert(group.m_page->Get() == 1);
         assert(group.m_channelOffset == 0);
     }
     void ChangePage() {
@@ -35,7 +35,7 @@ namespace ChannelGroup_Tests {
             }
             handled = true;
         });
-        assert(group.m_page == 1);
+        assert(group.m_page->Get() == 1);
 
         activePage += 1; // Page 2
         group.ChangePage(1);

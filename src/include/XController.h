@@ -30,7 +30,6 @@ struct MaIPCPacket {
 
 class XTouchData {
     uint32_t Page;
-
 };
 
 class PlaybackGroup {
@@ -55,6 +54,15 @@ public:
     uint32_t m_subAddress;
 };
 
+class PageObserver {
+    uint32_t m_page;
+    std::function<void(uint32_t)> m_updateCb;
+public:
+    PageObserver(uint32_t page, std::function<void(uint32_t)> updateCb);
+    uint32_t Get();
+    void Set(uint32_t page);
+};
+
 class ChannelGroup {
 public:
     ChannelGroup();
@@ -63,9 +71,9 @@ public:
     void ScrollPage(int32_t scrollOffset);
     void RegisterMAOutCB(std::function<void(MaIPCPacket&)> requestCb);
 
-    bool m_pinConfigMode;
-    uint32_t m_page; // Concrete concept
-    uint32_t m_channelOffset; // Offset is relative based on number of channels pinned
+    bool m_pinConfigMode = false;
+    PageObserver *m_page; // Concrete concept
+    uint32_t m_channelOffset = 0; // Offset is relative based on number of channels pinned
 
 private:
     void UpdateWatchList(); 

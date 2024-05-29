@@ -155,10 +155,10 @@ void ChannelGroup::UpdateWatchList() {
 void ChannelGroup::ChangePage(int32_t pageOffset) {
     assert(pageOffset == -1 || pageOffset == 1);
 
-    uint32_t original_page = m_page;
-    if (pageOffset == -1 && m_page > 1) { m_page--;} 
-    if (pageOffset == 1 && m_page < MAX_PAGE_COUNT) { m_page++; } 
-    if (m_page == original_page) { return; }
+    uint32_t cur_page = m_page->Get();
+    if (pageOffset == -1 && cur_page > 1) { m_page->Set(cur_page - 1);;} 
+    if (pageOffset == 1 && cur_page < MAX_PAGE_COUNT) { m_page->Set(cur_page + 1); } 
+    if (m_page->Get() == cur_page) { return; }
     
     // When changing page, we reset the channel subaddress
     m_channelOffset = 0;
@@ -167,7 +167,7 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
         auto &channel = m_channels[i];
         if (channel.IsPinned()) { continue; }
-        channel.m_mainAddress = m_page;
+        channel.m_mainAddress = m_page->Get();
         channel.m_subAddress = m_not_pinned_i++;
     }
 
@@ -176,7 +176,7 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
     if(cb_RequestMaData) {
         MaIPCPacket packet;
         packet.type = IPCMessageType::SET_PAGE;
-        packet.payload.page = m_page;
+        packet.payload.page = m_page->Get();
         cb_RequestMaData(packet);
     }
 }
@@ -201,7 +201,7 @@ void ChannelGroup::ScrollPage(int32_t scrollOffset) {
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
         auto &channel = m_channels[i];
         if (channel.IsPinned()) { continue; }
-        channel.m_mainAddress = m_page;
+        channel.m_mainAddress = m_page->Get();
         channel.m_subAddress = adjusted_base_subAddress + i;
     }
 
@@ -210,8 +210,8 @@ void ChannelGroup::ScrollPage(int32_t scrollOffset) {
 
 void ChannelGroup::TogglePinConfigMode() {
     m_pinConfigMode = !m_pinConfigMode;
-    // if (m_pinConfigMode) {printf("Entering pin config mode\n"); }
-    // if (!m_pinConfigMode) {printf("Exiting pin config mode\n"); }
+    if (m_pinConfigMode) {printf("Entering pin config mode\n"); }
+    if (!m_pinConfigMode) {printf("Exiting pin config mode\n"); }
     assert(g_xtouch != nullptr && "XTouch instance not created");
 
     if (m_pinConfigMode) {
@@ -244,8 +244,9 @@ ChannelGroup::ChannelGroup() {
         auto channel = new (&m_channels[i]) Channel(i + 1);
         channel->m_subAddress = i + 1;
     }
-    m_page = 1;
-    m_channelOffset = 0;
+    m_page = new PageObserver(1, [](uint32_t page) { 
+        g_xtouch->SetAssignment(page);
+    });
 }
 
 void ChannelGroup::RegisterMAOutCB(std::function<void(MaIPCPacket&)> requestCb) {
@@ -261,3 +262,14 @@ bool Channel::IsPinned() {
     return m_pinned;
 }
 
+PageObserver::PageObserver(uint32_t page, std::function<void(uint32_t)> updateCb) {
+    m_updateCb = updateCb;
+    Set(page);
+}
+uint32_t PageObserver::Get() {
+    return m_page;
+}
+void PageObserver::Set(uint32_t page) {
+    m_page = page;
+    m_updateCb(m_page);
+}
