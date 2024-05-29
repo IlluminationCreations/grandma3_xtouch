@@ -15,6 +15,24 @@ namespace IPCMessageType {
     enum RequestType {UNKNOWN, UPDATE_ENCODER_WATCHLIST, SET_PAGE};
 }
 
+template<typename T>
+class Observer {
+    T m_page;
+    std::function<void(T)> m_updateCb;
+public:
+    Observer(T page, std::function<void(T)> updateCb) {
+        m_updateCb = updateCb;
+        Set(page);
+    }
+    T Get() {
+        return m_page;
+    }
+    void Set(T page) {
+        m_page = page;
+        m_updateCb(m_page);
+    }
+};
+
 struct MaIPCPacket {
     IPCMessageType::RequestType type;
     union {
@@ -45,15 +63,6 @@ struct Address {
 };
 bool operator<(const Address& a, const Address& b);
 
-class AddressObserver {
-    Address m_address;
-    std::function<void(Address)> m_updateCb;
-public:
-    AddressObserver(Address address, std::function<void(Address)> updateCb);
-    Address Get();
-    void Set(Address address);
-};
-
 class Channel {
 private:
     void UpdateScribbleAddress();
@@ -67,16 +76,7 @@ public:
     bool IsPinned();
 
     const uint32_t PHYSICAL_CHANNEL_ID;
-    AddressObserver *m_address; // Virtual address / represents channel within MA
-};
-
-class PageObserver {
-    uint32_t m_page;
-    std::function<void(uint32_t)> m_updateCb;
-public:
-    PageObserver(uint32_t page, std::function<void(uint32_t)> updateCb);
-    uint32_t Get();
-    void Set(uint32_t page);
+    Observer<Address> *m_address; // Virtual address / represents channel within MA
 };
 
 class ChannelGroup {
@@ -88,7 +88,7 @@ public:
     void RegisterMAOutCB(std::function<void(MaIPCPacket&)> requestCb);
 
     bool m_pinConfigMode = false;
-    PageObserver *m_page; // Concrete concept
+    Observer<uint32_t> *m_page; // Concrete concept
     uint32_t m_channelOffset = 0; // Offset is relative based on number of channels pinned
 
 private:

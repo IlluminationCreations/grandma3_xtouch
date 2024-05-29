@@ -151,7 +151,7 @@ Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
         .Colour = xt_colours_t::WHITE,
         .Inverted = 1
     };
-    m_address = new AddressObserver({1, id}, [&](Address address) {
+    m_address = new Observer<Address>({1, id}, [&](Address address) {
         snprintf(m_scribblePad.TopText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
         snprintf(m_scribblePad.BotText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
         g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad); // PHYSICAL_CHANNEL_ID is 1-indexed, scribble is 0-indexed
@@ -255,7 +255,6 @@ void ChannelGroup::GenerateChannelWindows() {
             Address address = channel.m_address->Get();
             pinned.insert(address);
             inserted++;
-            printf("Pinned %u.%u\n", address.mainAddress, address.subAddress);
         }
 
         assert(pinned.size() == inserted && "Pinned channels not unique");
@@ -318,7 +317,7 @@ ChannelGroup::ChannelGroup() {
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
         auto channel = new (&m_channels[i]) Channel(i + 1);
     }
-    m_page = new PageObserver(1, [](uint32_t page) { 
+    m_page = new Observer<uint32_t>(1, [](uint32_t page) { 
         g_xtouch->SetAssignment(page);
     });
     GenerateChannelWindows();
@@ -343,28 +342,4 @@ void Channel::Pin(bool state) {
 
 bool Channel::IsPinned() {
     return m_pinned;
-}
-
-PageObserver::PageObserver(uint32_t page, std::function<void(uint32_t)> updateCb) {
-    m_updateCb = updateCb;
-    Set(page);
-}
-uint32_t PageObserver::Get() {
-    return m_page;
-}
-void PageObserver::Set(uint32_t page) {
-    m_page = page;
-    m_updateCb(m_page);
-}
-
-AddressObserver::AddressObserver(Address address, std::function<void(Address)> updateCb) {
-    m_updateCb = updateCb;
-    Set(address);
-}
-Address AddressObserver::Get() {
-    return m_address;
-}
-void AddressObserver::Set(Address address) {
-    m_address = address;
-    m_updateCb(m_address);
 }
