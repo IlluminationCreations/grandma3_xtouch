@@ -406,7 +406,7 @@ void XTouch::SendAllBoard() {
 void XTouch::SendPacket(unsigned char *buffer, unsigned int len)
 {
     for(int i = 0; i < 70000; i++) {}
-    m_packetCallBack(buffer, len);
+    if (m_packetCallBack) { m_packetCallBack(buffer, len); }
 
 }
 

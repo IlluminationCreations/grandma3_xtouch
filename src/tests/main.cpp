@@ -2,6 +2,8 @@
 #include <XController.h>
 #include <stdio.h>
 
+XTouch *g_xtouch; 
+
 namespace ChannelGroup_Tests {
     void Helper_PrintPacketEncoderRequest(MaIPCPacket &packet) {
         if(packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }

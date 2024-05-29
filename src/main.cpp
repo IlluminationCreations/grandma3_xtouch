@@ -50,11 +50,21 @@ SOFTWARE.
 #include <XController.h>
 #include <assert.h>
 
+// Global pointer to the XTouch object
+// It is preferable to use a global pointer to the XTouch object 
+// as the XTouch methods for updating segments/dials/faders is used by all the individual physical display objects
+// and passing callbacks to each of these objects would either be beuracratic or convoluted.
+// This is a simple way to ensure that the XTouch object is available to all the physical display objects
+// The "proper" way to do this would be to use message passing/mailbox, but that is only necessary if our threading model
+// becomes more complex.
+XTouch *g_xtouch; 
+
 int main(int, char**) {
-    XTouchController controller;
-    while(true) {
-        std::this_thread::sleep_for(std::chrono::hours(24));
-    }
-    assert(false && "Should never reach here");
-    return 0;
+   g_xtouch = new XTouch();
+   XTouchController controller;
+   while(true) {
+      std::this_thread::sleep_for(std::chrono::hours(24));
+   }
+   assert(false && "Should never reach here");
+   return 0;
 }

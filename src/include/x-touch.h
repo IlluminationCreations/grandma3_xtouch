@@ -172,7 +172,6 @@ enum xt_alias_btn {
     EXECUTER_SCROLL_LEFT = xt_buttons::FADER_BANK_RIGHT
 };
 
-
 typedef struct {
     char TopText[8];
     char BotText[8];
@@ -251,3 +250,5 @@ class XTouch {
 
         std::thread m_soundMeterRefresh;
 };
+
+extern XTouch *g_xtouch;

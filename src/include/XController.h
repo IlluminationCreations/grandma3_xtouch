@@ -87,7 +87,6 @@ private:
     struct Address { uint32_t page; uint32_t offset; };
     enum SpawnType { SERVER_XT, SERVER_MA };
 
-    XTouch xt;
     TCPServer *xt_server = nullptr;
     ChannelGroup m_group;
     std::thread m_watchDog;

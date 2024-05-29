@@ -4,12 +4,16 @@
 #include <stdio.h>
 
 XTouchController::XTouchController() {
-    xt.RegisterPacketSender([&](unsigned char *buffer, unsigned int len) 
+    SpawnServer(SERVER_XT);
+
+    assert(g_xtouch != nullptr && "XTouch instance not created");
+    g_xtouch->RegisterPacketSender([&](unsigned char *buffer, unsigned int len) 
     {
+        assert(xt_server != nullptr && "Server not created");
         xt_server->Send(buffer, len);
     });
 
-    xt.RegisterButtonCallback([&](unsigned char button, int attr)
+    g_xtouch->RegisterButtonCallback([&](unsigned char button, int attr)
     {
         if (attr == 0) { return; } // No special handling for button up, yet.
 
@@ -17,25 +21,23 @@ XTouchController::XTouchController() {
             printf("Button %u hit, state = %u\n", button, attr);
         }
     });
-    xt.RegisterDialCallback([&](unsigned char button, int attr)
+    g_xtouch->RegisterDialCallback([&](unsigned char button, int attr)
     {
         printf("Button %u hit, szate = %d\n", button, attr);
     });
-    xt.RegisterFaderCallback([&](unsigned char button, int attr)
+    g_xtouch->RegisterFaderCallback([&](unsigned char button, int attr)
     {
         printf("Button %u hit, state = %u\n", button, attr);
     });
-    xt.RegisterFaderStateCallback([&](unsigned char button, int attr)
+    g_xtouch->RegisterFaderStateCallback([&](unsigned char button, int attr)
     {
         printf("Button %u hit, state = %u\n", button, attr);
     });
-
-    SpawnServer(SERVER_XT);
 
     m_watchDog = std::thread(&XTouchController::WatchDog, this);
     m_group.RegisterMAOutCB([](MaIPCPacket &packet) {});
     m_group.RegisterButtonLightState([&](xt_buttons btn, xt_button_state_t state) {
-        xt.SetSingleButton(btn, state);
+        g_xtouch->SetSingleButton(btn, state);
     });
 }
 
@@ -52,7 +54,7 @@ void XTouchController::SpawnServer(SpawnType type) {
             if(xt_server != nullptr) { delete xt_server; }
             xt_server = new TCPServer(xt_port, [&] (unsigned char* buffer, uint64_t len)  
                 {
-                    xt.HandlePacket(buffer, len);
+                    g_xtouch->HandlePacket(buffer, len);
                 }
             );
             break;
@@ -258,7 +260,6 @@ void ChannelGroup::RegisterButtonLightState(std::function<void(xt_buttons, xt_bu
 }
 
 void Channel::Pin(bool state) {
-    if (state == m_pinned) { return; }
     m_pinned = state;
 }
 
