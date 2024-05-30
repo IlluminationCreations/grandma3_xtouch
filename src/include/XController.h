@@ -12,7 +12,7 @@ constexpr unsigned int MAX_CHANNEL_COUNT = 90;
 enum class ControlType { UNKNOWN, SEGMENT, FADER, KNOB };
 enum class SegmentID { UNKNOWN, PAGE };
 namespace IPCMessageType {
-    enum RequestType {UNKNOWN, UPDATE_ENCODER_WATCHLIST, SET_PAGE};
+    enum RequestType {UNKNOWN, UPDATE_ENCODER_WATCHLIST};
 }
 
 template<typename T>
@@ -90,6 +90,7 @@ public:
     bool m_pinConfigMode = false;
     Observer<uint32_t> *m_page; // Concrete concept
     uint32_t m_channelOffset = 0; // Offset is relative based on number of channels pinned
+    uint32_t m_channelOffsetEnd = 0; // Final m_channelWindows index
 
 private:
     void UpdateWatchList(); 

@@ -128,11 +128,13 @@ void ChannelGroup::UpdatePinnedChannels(xt_buttons button) {
         if (muteButtonHit) {
             printf("Unpinning channel %u\n", muteBtnToChannel);
             m_channels[muteBtnToChannel].Pin(false);
+            GenerateChannelWindows();
             return;
         }
         if (selectButtonHit) {
             printf("Pinning channel %u\n", selectBtnToChannel);
             m_channels[selectBtnToChannel].Pin(true);
+            GenerateChannelWindows();
             return;
         }
         return;
@@ -152,6 +154,14 @@ Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
         .Inverted = 1
     };
     m_address = new Observer<Address>({1, id}, [&](Address address) {
+        if (address.subAddress == UINT32_MAX) {
+            m_scribblePad.Colour = xt_colours_t::BLACK;
+            snprintf(m_scribblePad.TopText, 8, "----");
+            snprintf(m_scribblePad.BotText, 8, "----");
+            g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad); // PHYSICAL_CHANNEL_ID is 1-indexed, scribble is 0-indexed
+            return;
+        }
+        m_scribblePad.Colour = xt_colours_t::WHITE;
         snprintf(m_scribblePad.TopText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
         snprintf(m_scribblePad.BotText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
         g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad); // PHYSICAL_CHANNEL_ID is 1-indexed, scribble is 0-indexed
@@ -205,13 +215,6 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
     }
 
     UpdateWatchList();
-
-    if(cb_RequestMaData) {
-        MaIPCPacket packet;
-        packet.type = IPCMessageType::SET_PAGE;
-        packet.payload.page = m_page->Get();
-        cb_RequestMaData(packet);
-    }
 }
 
 void ChannelGroup::ScrollPage(int32_t scrollOffset) {
@@ -220,16 +223,20 @@ void ChannelGroup::ScrollPage(int32_t scrollOffset) {
 
     uint32_t original_offset = m_channelOffset;
     if (scrollOffset == -1 && m_channelOffset > 0) { m_channelOffset--;}
-    if (scrollOffset == 1) { m_channelOffset++; }
+    if (scrollOffset == 1 && m_channelOffset < m_channelOffsetEnd) { m_channelOffset++; }
     if (m_channelOffset == original_offset) { return; }
-    GenerateChannelWindows();
 
     auto mainAddress = m_page->Get();
     auto &window = m_channelWindows[m_channelOffset];
     auto &&it = window.begin();
-    for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-        assert(it != window.end());
+    bool final_window = m_channelOffset == m_channelOffsetEnd;
+
+    int i = 0; // We need to keep track of the number of channels we've updated, since we might not update all of them if we reach the final window
+    // The final window might not have enough channels to fill all the physical channels.
+    for(; i < PHYSICAL_CHANNEL_COUNT; i++) {
         auto &channel = m_channels[i]; if (channel.IsPinned()) { continue; }
+        if (final_window && it == window.end()) { break; } // We've reached the final window, we need special handling
+        assert(it != window.end()); // When we're not in the final window, we should never reach the end of the list
 
         Address address;
         address.mainAddress = mainAddress;
@@ -237,6 +244,14 @@ void ChannelGroup::ScrollPage(int32_t scrollOffset) {
         m_channels[i].m_address->Set(address);
 
         it++;
+    }
+    if (final_window && i < PHYSICAL_CHANNEL_COUNT) {
+        for(; i < PHYSICAL_CHANNEL_COUNT; i++) {
+            Address address;
+            address.mainAddress = mainAddress;
+            address.subAddress = UINT32_MAX; // This is a special value that indicates that the channel is not valid
+            m_channels[i].m_address->Set(address);
+        }
     }
     assert(it == window.end());
 
@@ -280,6 +295,7 @@ void ChannelGroup::GenerateChannelWindows() {
     }
     if (cur_window.size() > 0) { windows.push_back(cur_window); }
     m_channelWindows = std::move(windows);
+    m_channelOffsetEnd = m_channelWindows.size() - 1;
 }
 
 void ChannelGroup::TogglePinConfigMode() {
