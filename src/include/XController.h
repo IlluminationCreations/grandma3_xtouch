@@ -11,9 +11,6 @@ constexpr unsigned int MAX_PAGE_COUNT = 99; // TODO: Limiting to 99 as the assig
 constexpr unsigned int MAX_CHANNEL_COUNT = 90;
 enum class ControlType { UNKNOWN, SEGMENT, FADER, KNOB };
 enum class SegmentID { UNKNOWN, PAGE };
-namespace IPCMessageType {
-    enum RequestType {UNKNOWN, UPDATE_ENCODER_WATCHLIST};
-}
 
 template<typename T>
 class Observer {
@@ -33,18 +30,47 @@ public:
     }
 };
 
-struct MaIPCPacket {
-    IPCMessageType::RequestType type;
-    union {
-        // IPCMessageType::RequestType::UPDATE_ENCODER_WATCHLIST
-        struct {
-            unsigned int page;
-            unsigned int channel; // eg x01, x02, x03
+#define IPC_STRUCT struct __attribute__((__packed__))
+namespace IPC {
+    namespace PacketType {
+        enum Request {UNKNOWN, REQ_ENCODERS};
+        enum Response {UNKNOWN, RESPONSE_ENCODERS_METADATA, RESPONSE_ENCODERS_DATA};
+    }
 
-        } EncoderRequest[8];
-        uint32_t page;
-    } payload;
-};
+    IPC_STRUCT IPCHeader {
+        PacketType::Type type;
+        uint32_t seq;
+    }
+    namespace PlaybackRefresh {
+        IPC_STRUCT Request {
+            IPC_STRUCT {
+                unsigned int page;
+                unsigned int channel; // eg x01, x02, x03
+            } EncoderRequest[8];
+        };
+
+        IPC_STRUCT ChannelMetadata{
+            float master; // Master fader
+            bool channelActive[8]; // True if channel/playback has any active encoders or keys
+        }; 
+
+        // Represents the entire column of encoders and keys for a single playback
+        IPC_STRUCT Data {
+            uint16_t page;
+            uint8_t channel; // eg x01, x02, x03
+            IPC_STRUCT {
+                bool isActive;
+                char key_name[8];
+                float value;
+            } Encoders[3]; // 4xx, 3xx, 2xx encoders
+            bool keysActive[4]; // 4xx, 3xx, 2xx, 1xx keys are being used
+        };
+    }
+}
+
+
+
+// 
 
 class XTouchData {
     uint32_t Page;

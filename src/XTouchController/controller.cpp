@@ -174,10 +174,10 @@ void Channel::UpdateScribbleAddress() {
 
 void ChannelGroup::UpdateWatchList() {
     MaIPCPacket packet;
-    packet.type = IPCMessageType::UPDATE_ENCODER_WATCHLIST;
+    packet.type = IPCMessageType::REQ_ENCODERS;
 
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-        auto channel_data = &packet.payload.EncoderRequest[i];
+        auto channel_data = &packet.data.EncoderRequest[i];
         auto address = m_channels[i].m_address->Get();
 
         channel_data->channel = address.subAddress;

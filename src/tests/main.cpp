@@ -6,10 +6,10 @@ XTouch *g_xtouch;
 
 namespace ChannelGroup_Tests {
     void Helper_PrintPacketEncoderRequest(MaIPCPacket &packet) {
-        if(packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
+        if(packet.type != IPCMessageType::REQ_ENCODERS) { return; }
         
         for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-            auto channel_data = &packet.payload.EncoderRequest[i];
+            auto channel_data = &packet.data.EncoderRequest[i];
             printf("[%u] Channel=%u, Page=%u\n", i, channel_data->channel, channel_data->page);
         }
         printf("\n");
@@ -27,9 +27,9 @@ namespace ChannelGroup_Tests {
         uint32_t activePage = 1;
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if(packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) {return;}
+            if(packet.type != IPCMessageType::REQ_ENCODERS) {return;}
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.payload.EncoderRequest[i];
+                auto channel_data = &packet.data.EncoderRequest[i];
                 assert(channel_data->channel == i + 1);
                 assert(channel_data->page == activePage);
             }
@@ -80,11 +80,11 @@ namespace ChannelGroup_Tests {
         // Test pinning first channel. All other channels should be on page 2, from channel 1-7
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
+            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
             // Helper_PrintPacketEncoderRequest(packet);
             auto ch_i = 1;
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.payload.EncoderRequest[i];
+                auto channel_data = &packet.data.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
@@ -120,11 +120,11 @@ namespace ChannelGroup_Tests {
         // Test pinning first and last channel. All other channels should be on page 2, from channel 1-6
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
+            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
 
             auto ch_i = 1;
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.payload.EncoderRequest[i];
+                auto channel_data = &packet.data.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
@@ -163,11 +163,11 @@ namespace ChannelGroup_Tests {
         // Test pinning first, middle, and last channel. All other channels should be on page 2, from channel 1-5
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
+            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
 
             auto ch_i = 1;
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.payload.EncoderRequest[i];
+                auto channel_data = &packet.data.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
@@ -218,11 +218,11 @@ namespace ChannelGroup_Tests {
         // 3, from 1-6
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
+            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
 
             auto ch_i = 1;
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.payload.EncoderRequest[i];
+                auto channel_data = &packet.data.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
@@ -265,11 +265,11 @@ namespace ChannelGroup_Tests {
         // where width = number of physical channels available for reassignment
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
+            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
 
             auto ch_i = 9; 
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.payload.EncoderRequest[i];
+                auto channel_data = &packet.data.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 5) { // Physical channel that was pinned
@@ -305,11 +305,11 @@ namespace ChannelGroup_Tests {
         // where width = number of physical channels available for reassignment
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
+            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
 
             auto ch_i = 8; 
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.payload.EncoderRequest[i];
+                auto channel_data = &packet.data.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
@@ -349,10 +349,10 @@ namespace ChannelGroup_Tests {
         // where width = number of physical channels available for reassignment
         bool handled = false;
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
+            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
 
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.payload.EncoderRequest[i];
+                auto channel_data = &packet.data.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 1) { // Physical channel that was pinned
@@ -374,10 +374,10 @@ namespace ChannelGroup_Tests {
         // Fix bug where after fixing issue above, the last channel on the previous scroll page
         // was then assigned to the first channel on the next page.
         group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::UPDATE_ENCODER_WATCHLIST) { return; }
+            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
 
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.payload.EncoderRequest[i];
+                auto channel_data = &packet.data.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
