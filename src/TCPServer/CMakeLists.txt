@@ -1,1 +1,1 @@
-add_library(TCPSERVER_LIB server.cpp)
+add_library(TCPSERVER_LIB xserver.cpp maserver.cpp)
