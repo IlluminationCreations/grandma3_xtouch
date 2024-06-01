@@ -1,15 +1,24 @@
 #include <cassert>
 #include <XController.h>
 #include <stdio.h>
-
+#include <memory.h>
 XTouch *g_xtouch; 
 
 namespace ChannelGroup_Tests {
-    void Helper_PrintPacketEncoderRequest(MaIPCPacket &packet) {
-        if(packet.type != IPCMessageType::REQ_ENCODERS) { return; }
-        
+    IPC::IPCHeader Helper_GetHeader(void *data) {
+        IPC::IPCHeader header;
+        memcpy(&header, data, sizeof(IPC::IPCHeader));
+        return header;
+    }
+    IPC::PlaybackRefresh::Request Helper_GetReqEncoders(void *data) {
+        IPC::PlaybackRefresh::Request req_encoders;
+        memcpy(&req_encoders, data, sizeof(IPC::PlaybackRefresh::Request));
+        return req_encoders;
+    }
+
+    void Helper_PrintPacketEncoderRequest(IPC::PlaybackRefresh::Request &packet) {       
         for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-            auto channel_data = &packet.data.EncoderRequest[i];
+            auto channel_data = &packet.EncoderRequest[i];
             printf("[%u] Channel=%u, Page=%u\n", i, channel_data->channel, channel_data->page);
         }
         printf("\n");
@@ -26,10 +35,14 @@ namespace ChannelGroup_Tests {
         ChannelGroup group;
         uint32_t activePage = 1;
         bool handled = false;
-        group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if(packet.type != IPCMessageType::REQ_ENCODERS) {return;}
+        group.RegisterMAOutCB([&](char *data, uint32_t len) {
+            auto header = Helper_GetHeader(data);
+            if(header.type != IPC::PacketType::REQ_ENCODERS) {return;}
+            auto req_encoders = Helper_GetReqEncoders(data + sizeof(IPC::IPCHeader));
+            
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.data.EncoderRequest[i];
+                auto channel_data = &req_encoders.EncoderRequest[i];
+                printf("[%u] Channel=%u, Page=%u\n", i, channel_data->channel, channel_data->page);
                 assert(channel_data->channel == i + 1);
                 assert(channel_data->page == activePage);
             }
@@ -50,7 +63,6 @@ namespace ChannelGroup_Tests {
         assert(handled == false); 
 
     }
-
     void CheckUpdatePinConfigExitButtonLogic() {
         printf("-> Running ChannelGroup_Tests::CheckUpdatePinButtonLogic\n");
         ChannelGroup group;
@@ -79,12 +91,14 @@ namespace ChannelGroup_Tests {
         ChannelGroup group;
         // Test pinning first channel. All other channels should be on page 2, from channel 1-7
         bool handled = false;
-        group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
-            // Helper_PrintPacketEncoderRequest(packet);
+        group.RegisterMAOutCB([&](char *data, uint32_t len) {
+            auto header = Helper_GetHeader(data);
+            if(header.type != IPC::PacketType::REQ_ENCODERS) {return;}
+            auto req_encoders = Helper_GetReqEncoders(data + sizeof(IPC::IPCHeader));
+            // Helper_PrintPacketEncoderRequest(req_encoders);
             auto ch_i = 1;
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.data.EncoderRequest[i];
+                auto channel_data = &req_encoders.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
@@ -101,7 +115,7 @@ namespace ChannelGroup_Tests {
                 assert(page == 2);
                 if (channel != ch_i++) {
                     printf("Expected: %u, Got: %u\n", ch_i-1, channel);
-                    Helper_PrintPacketEncoderRequest(packet);
+                    Helper_PrintPacketEncoderRequest(req_encoders);
                     assert(false && "Channel did not match expected");
                 }
             }
@@ -119,12 +133,14 @@ namespace ChannelGroup_Tests {
   
         // Test pinning first and last channel. All other channels should be on page 2, from channel 1-6
         bool handled = false;
-        group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
+        group.RegisterMAOutCB([&](char *data, uint32_t len) {
+            auto header = Helper_GetHeader(data);
+            if(header.type != IPC::PacketType::REQ_ENCODERS) {return;}
+            auto req_encoders = Helper_GetReqEncoders(data + sizeof(IPC::IPCHeader));
 
             auto ch_i = 1;
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.data.EncoderRequest[i];
+                auto channel_data = &req_encoders.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
@@ -141,7 +157,7 @@ namespace ChannelGroup_Tests {
                 assert(page == 2);
                 if (channel != ch_i++) {
                     printf("Expected: %u, Got: %u\n", ch_i-1, channel);
-                    Helper_PrintPacketEncoderRequest(packet);
+                    Helper_PrintPacketEncoderRequest(req_encoders);
                     assert(false && "Channel did not match expected");
                 }
             }
@@ -162,12 +178,14 @@ namespace ChannelGroup_Tests {
   
         // Test pinning first, middle, and last channel. All other channels should be on page 2, from channel 1-5
         bool handled = false;
-        group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
+        group.RegisterMAOutCB([&](char *data, uint32_t len) {
+            auto header = Helper_GetHeader(data);
+            if(header.type != IPC::PacketType::REQ_ENCODERS) {return;}
+            auto req_encoders = Helper_GetReqEncoders(data + sizeof(IPC::IPCHeader));
 
             auto ch_i = 1;
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.data.EncoderRequest[i];
+                auto channel_data = &req_encoders.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
@@ -189,7 +207,7 @@ namespace ChannelGroup_Tests {
                 assert(page == 2);
                 if (channel != ch_i++) {
                     printf("Expected: %u, Got: %u\n", ch_i-1, channel);
-                    Helper_PrintPacketEncoderRequest(packet);
+                    Helper_PrintPacketEncoderRequest(req_encoders);
                     assert(false && "Channel did not match expected");
                 }
             }
@@ -217,12 +235,14 @@ namespace ChannelGroup_Tests {
         // Test pinning first channel on page 1, last channel on page 2. All other should be on page
         // 3, from 1-6
         bool handled = false;
-        group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
+        group.RegisterMAOutCB([&](char *data, uint32_t len) {
+            auto header = Helper_GetHeader(data);
+            if(header.type != IPC::PacketType::REQ_ENCODERS) {return;}
+            auto req_encoders = Helper_GetReqEncoders(data + sizeof(IPC::IPCHeader));
 
             auto ch_i = 1;
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.data.EncoderRequest[i];
+                auto channel_data = &req_encoders.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
@@ -239,7 +259,7 @@ namespace ChannelGroup_Tests {
                 assert(page == 3);
                 if (channel != ch_i++) {
                     printf("Expected: %u, Got: %u\n", ch_i-1, channel);
-                    Helper_PrintPacketEncoderRequest(packet);
+                    Helper_PrintPacketEncoderRequest(req_encoders);
                     assert(false && "Channel did not match expected");
                 }
             }
@@ -264,12 +284,14 @@ namespace ChannelGroup_Tests {
         // physical channel 2 should be [(width * page_offset) + i]
         // where width = number of physical channels available for reassignment
         bool handled = false;
-        group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
+        group.RegisterMAOutCB([&](char *data, uint32_t len) {
+            auto header = Helper_GetHeader(data);
+            if(header.type != IPC::PacketType::REQ_ENCODERS) {return;}
+            auto req_encoders = Helper_GetReqEncoders(data + sizeof(IPC::IPCHeader));
 
             auto ch_i = 9; 
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.data.EncoderRequest[i];
+                auto channel_data = &req_encoders.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 5) { // Physical channel that was pinned
@@ -280,7 +302,7 @@ namespace ChannelGroup_Tests {
                 assert(page == 1);
                 if (channel != ch_i++) {
                     printf("Expected: %u, Got: %u\n", ch_i-1, channel);
-                    Helper_PrintPacketEncoderRequest(packet);
+                    Helper_PrintPacketEncoderRequest(req_encoders);
                     assert(false && "Channel did not match expected");
                 }
             }
@@ -304,12 +326,14 @@ namespace ChannelGroup_Tests {
         // physical channel 2 should be [(width * page_offset) + i]
         // where width = number of physical channels available for reassignment
         bool handled = false;
-        group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
+        group.RegisterMAOutCB([&](char *data, uint32_t len) {
+            auto header = Helper_GetHeader(data);
+            if(header.type != IPC::PacketType::REQ_ENCODERS) {return;}
+            auto req_encoders = Helper_GetReqEncoders(data + sizeof(IPC::IPCHeader));
 
             auto ch_i = 8; 
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.data.EncoderRequest[i];
+                auto channel_data = &req_encoders.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
@@ -321,7 +345,7 @@ namespace ChannelGroup_Tests {
                 assert(page == 2);
                 if (channel != ch_i++) {
                     printf("Expected: %u, Got: %u\n", ch_i-1, channel);
-                    Helper_PrintPacketEncoderRequest(packet);
+                    Helper_PrintPacketEncoderRequest(req_encoders);
                     assert(false && "Channel did not match expected");
                 }
             }
@@ -348,11 +372,13 @@ namespace ChannelGroup_Tests {
         // physical channel 2 should be [(width * page_offset) + i]
         // where width = number of physical channels available for reassignment
         bool handled = false;
-        group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
+        group.RegisterMAOutCB([&](char *data, uint32_t len) {
+            auto header = Helper_GetHeader(data);
+            if(header.type != IPC::PacketType::REQ_ENCODERS) {return;}
+            auto req_encoders = Helper_GetReqEncoders(data + sizeof(IPC::IPCHeader));
 
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.data.EncoderRequest[i];
+                auto channel_data = &req_encoders.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 1) { // Physical channel that was pinned
@@ -373,16 +399,18 @@ namespace ChannelGroup_Tests {
 
         // Fix bug where after fixing issue above, the last channel on the previous scroll page
         // was then assigned to the first channel on the next page.
-        group.RegisterMAOutCB([&](MaIPCPacket &packet) {
-            if (packet.type != IPCMessageType::REQ_ENCODERS) { return; }
+        group.RegisterMAOutCB([&](char *data, uint32_t len) {
+            auto header = Helper_GetHeader(data);
+            if(header.type != IPC::PacketType::REQ_ENCODERS) {return;}
+            auto req_encoders = Helper_GetReqEncoders(data + sizeof(IPC::IPCHeader));
 
             for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-                auto channel_data = &packet.data.EncoderRequest[i];
+                auto channel_data = &req_encoders.EncoderRequest[i];
                 auto channel = channel_data->channel;
                 auto page = channel_data->page;
                 if (i == 0) { // Physical channel that was pinned
                     if (channel == 15) {
-                        Helper_PrintPacketEncoderRequest(packet);
+                        Helper_PrintPacketEncoderRequest(req_encoders);
                         assert(false && "Channel did not match expected");
                     }
                     continue;
