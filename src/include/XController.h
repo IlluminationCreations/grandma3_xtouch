@@ -3,6 +3,8 @@
 #include "x-touch.h"
 #include <tcpserver.h>
 #include <thread>
+#include <maserver.h>
+#include <string>
 
 constexpr unsigned short xt_port = 10111;
 constexpr unsigned int PHYSICAL_CHANNEL_COUNT = 8;
@@ -30,17 +32,27 @@ public:
     }
 };
 
+namespace EncoderType {
+    // Ordering is based on the order sent from the LUA plugin (400, 300, 200, 100)
+    enum Type { 
+        _400 = 0,
+        _300 = 1,
+        _200 = 2,
+        _100 = 3
+     }; 
+}
+
 #define IPC_STRUCT struct __attribute__((__packed__))
 namespace IPC {
     namespace PacketType {
-        enum Request {UNKNOWN, REQ_ENCODERS};
-        enum Response {UNKNOWN, RESPONSE_ENCODERS_METADATA, RESPONSE_ENCODERS_DATA};
+        enum Type {UNKNOWN, REQ_ENCODERS, RESP_ENCODERS};
     }
 
     IPC_STRUCT IPCHeader {
         PacketType::Type type;
         uint32_t seq;
-    }
+    };
+
     namespace PlaybackRefresh {
         IPC_STRUCT Request {
             IPC_STRUCT {
@@ -49,7 +61,7 @@ namespace IPC {
             } EncoderRequest[8];
         };
 
-        IPC_STRUCT ChannelMetadata{
+        IPC_STRUCT ChannelMetadata {
             float master; // Master fader
             bool channelActive[8]; // True if channel/playback has any active encoders or keys
         }; 
@@ -68,10 +80,6 @@ namespace IPC {
     }
 }
 
-
-
-// 
-
 class XTouchData {
     uint32_t Page;
 };
@@ -89,17 +97,29 @@ struct Address {
 };
 bool operator<(const Address& a, const Address& b);
 
+
 class Channel {
 private:
+    struct EncoderColumn {
+        struct {
+            bool active;
+            std::string name;
+            float value;
+        } encoders[3]; // 4xx, 3xx, 2xx encoders
+        bool keysActive[4]; // 4xx, 3xx, 2xx, 1xx keys are being used
+    }; // Slimmed down version of IPC::PlaybackRefresh::Data
     void UpdateScribbleAddress();
 
     xt_ScribblePad_t m_scribblePad;
     bool m_pinned = false;
+    EncoderColumn m_encoders;
 
 public:
     Channel(uint32_t id);
+    void UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder);
     void Pin(bool state);
     bool IsPinned();
+    void Disable();
 
     const uint32_t PHYSICAL_CHANNEL_ID;
     Observer<Address> *m_address; // Virtual address / represents channel within MA
@@ -108,15 +128,22 @@ public:
 class ChannelGroup {
 public:
     ChannelGroup();
+    void UpdateFader(uint32_t channel, float value);
     void UpdatePinnedChannels(xt_buttons button);
     void ChangePage(int32_t pageOffset); 
     void ScrollPage(int32_t scrollOffset);
-    void RegisterMAOutCB(std::function<void(MaIPCPacket&)> requestCb);
+    void RegisterMAOutCB(std::function<void(char*, uint32_t)> requestCb);
+    std::vector<Address> CurrentChannelAddress();
+    void UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder, uint32_t physical_channel_id);
+    void UpdateMasterFader(float value);
+    void DisablePhysicalChannel(uint32_t channel);
 
     bool m_pinConfigMode = false;
     Observer<uint32_t> *m_page; // Concrete concept
     uint32_t m_channelOffset = 0; // Offset is relative based on number of channels pinned
     uint32_t m_channelOffsetEnd = 0; // Final m_channelWindows index
+    float m_masterFader = 0.0f;
+
 
 private:
     void UpdateWatchList(); 
@@ -124,7 +151,7 @@ private:
     void GenerateChannelWindows();
 
     // CBs
-    std::function<void(MaIPCPacket&)> cb_RequestMaData;
+    std::function<void(char*, uint32_t)> cb_RequestMaData;
 
     // "Other"
     Channel *m_channels;
@@ -140,14 +167,18 @@ private:
     enum SpawnType { SERVER_XT, SERVER_MA };
 
     TCPServer *xt_server = nullptr;
+    MaUDPServer ma_server;
     ChannelGroup m_group;
     std::thread m_watchDog;
+    std::thread m_playbackRefresh;
 
     void WatchDog();
     void MeterRefresh();
     void SpawnServer(SpawnType type);
     bool HandleButton(xt_buttons btn);
     void HandleAddressChange(xt_alias_btn btn);
+    void RefreshPlaybacks();
+    bool RefreshPlaybacksImpl();
 };
 
 

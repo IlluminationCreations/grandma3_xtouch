@@ -3,6 +3,9 @@
 #include <assert.h>
 #include <stdio.h>
 #include <set>
+#include <memory>
+#include <string.h>
+#include <guards.h>
 
 bool operator<(const Address& a, const Address& b) {
     if (a.mainAddress == b.mainAddress && a.subAddress == b.subAddress) { return false; }
@@ -48,7 +51,10 @@ XTouchController::XTouchController() {
     });
 
     m_watchDog = std::thread(&XTouchController::WatchDog, this);
-    m_group.RegisterMAOutCB([](MaIPCPacket &packet) {});
+    m_watchDog.detach();
+    m_playbackRefresh = std::thread(&XTouchController::RefreshPlaybacks, this);
+    m_playbackRefresh.detach();
+    m_group.RegisterMAOutCB([](void*, uint32_t) {});
 }
 
 void XTouchController::WatchDog() {
@@ -108,6 +114,121 @@ void XTouchController::HandleAddressChange(xt_alias_btn btn) {
         }
         default: { assert(false); }
     }
+}
+
+std::vector<Address> ChannelGroup::CurrentChannelAddress() {
+    std::vector<Address> addresses;
+    for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
+        addresses.push_back(m_channels[i].m_address->Get());
+    }
+    assert(addresses.size() == PHYSICAL_CHANNEL_COUNT);
+    return std::move(addresses);
+}
+
+void XTouchController::RefreshPlaybacks() {
+    while (true) {
+        if (!RefreshPlaybacksImpl()) {
+            printf("Failed to refresh playbacks\n");
+        };
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+}
+bool XTouchController::RefreshPlaybacksImpl() {
+    uint32_t seq = 0;
+
+    IPC::IPCHeader header;
+    header.type = IPC::PacketType::REQ_ENCODERS;
+    header.seq = seq;
+    IPC::PlaybackRefresh::Request request;
+    auto channels = m_group.CurrentChannelAddress();
+    for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
+        request.EncoderRequest[i].channel = channels[i].subAddress;
+        request.EncoderRequest[i].page = channels[i].mainAddress;
+    }
+
+    auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::PlaybackRefresh::Request);
+    char *buffer = (char*)malloc(4096);
+    memcpy(buffer, &header, sizeof(IPC::IPCHeader));
+    memcpy(buffer + sizeof(IPC::IPCHeader), &request, sizeof(IPC::PlaybackRefresh::Request));
+    ma_server.Send(buffer, packet_size);
+
+    if (ma_server.Read(buffer, 4096) < 0) {
+        printf("Failed to read from MA server\n");
+        return false;
+    }
+    IPC::IPCHeader *resp_header = (IPC::IPCHeader*)buffer;
+    if (resp_header->type != IPC::PacketType::RESP_ENCODERS) {
+        return false;
+    }
+    if (resp_header->seq != seq) {
+        return false;
+    }
+    IPC::PlaybackRefresh::ChannelMetadata resp_metadata;
+    memcpy(&resp_metadata, buffer + sizeof(IPC::IPCHeader), sizeof(IPC::PlaybackRefresh::ChannelMetadata));
+    m_group.UpdateMasterFader(resp_metadata.master);
+
+    IPC::PlaybackRefresh::Data *data = (IPC::PlaybackRefresh::Data*)(buffer);
+    for(int i = 0; i < 8; i++) {
+        if(!resp_metadata.channelActive[i]) {
+            m_group.DisablePhysicalChannel(i);
+            continue;
+        }
+        if (ma_server.Read(buffer, 4096) < 0) {
+            printf("Failed to read from MA server\n");
+            return false;
+        }
+
+        m_group.UpdateEncoderIPC(*data, i);    
+    }
+    return true;
+}
+
+void ChannelGroup::DisablePhysicalChannel(uint32_t i) {
+    assert(i >= 0 && i < 8);
+    m_channels[i].Disable();
+}
+
+void ChannelGroup::UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder, uint32_t physical_channel_id) {
+    assert(physical_channel_id >= 0 && physical_channel_id < 8);
+    auto &channel = m_channels[physical_channel_id];
+    channel.UpdateEncoderIPC(encoder);
+}
+
+void Channel::Disable() {
+    m_scribblePad.Colour = xt_colours_t::BLACK;
+    g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
+}
+
+void Channel::UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder) {
+    auto address = m_address->Get();
+    assert(address.mainAddress == encoder.page && address.subAddress == encoder.channel);
+
+    // 0,   1,   2
+    // 4xx, 3xx, 2xx encoders
+    for(int i = 0; i < 3; i++) {
+        // Guard Update name
+        // Guard Update value
+        auto normalized_value = encoder.Encoders[i].value / 100.0f;
+        auto fractional_value = 16380 * normalized_value;
+        m_encoders.encoders[i].value = fractional_value;
+
+        // 2xx fader
+        if (i == 2) {
+            printf("Updating fader %u to %f\n", PHYSICAL_CHANNEL_ID, fractional_value);
+            g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, fractional_value);
+        }      
+    }
+}
+
+void ChannelGroup::UpdateMasterFader(float unnormalized_value) {
+    auto normalized_value = unnormalized_value / 100.0f;
+    auto fractional_value = 16380 * normalized_value;
+
+    if (m_masterFader == fractional_value) { return; }
+
+    m_masterFader = fractional_value;
+    g_xtouch->SetFaderLevel(8, fractional_value);
 }
 
 void ChannelGroup::UpdatePinnedChannels(xt_buttons button) {
@@ -173,18 +294,22 @@ void Channel::UpdateScribbleAddress() {
 }
 
 void ChannelGroup::UpdateWatchList() {
-    MaIPCPacket packet;
-    packet.type = IPCMessageType::REQ_ENCODERS;
+    auto buffer_size = sizeof(IPC::IPCHeader) + sizeof(IPC::PlaybackRefresh::Request);
+    char *buffer = (char*)malloc(buffer_size);
+    IPC::IPCHeader *header = (IPC::IPCHeader*)buffer;
+    IPC::PlaybackRefresh::Request *packet = (IPC::PlaybackRefresh::Request*)(buffer + sizeof(IPC::IPCHeader));
+
+    header->type = IPC::PacketType::REQ_ENCODERS;
+    header->seq = 0; // TODO: Implement sequence number
 
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-        auto channel_data = &packet.data.EncoderRequest[i];
         auto address = m_channels[i].m_address->Get();
 
-        channel_data->channel = address.subAddress;
-        channel_data->page = address.mainAddress;
+        packet->EncoderRequest[i].channel = address.subAddress;
+        packet->EncoderRequest[i].page = address.mainAddress;
     }
 
-    if(cb_RequestMaData) { cb_RequestMaData(packet); }
+    if(cb_RequestMaData) { cb_RequestMaData(buffer, buffer_size); }
 }
 
 void ChannelGroup::ChangePage(int32_t pageOffset) {
@@ -339,10 +464,9 @@ ChannelGroup::ChannelGroup() {
     GenerateChannelWindows();
 }
 
-void ChannelGroup::RegisterMAOutCB(std::function<void(MaIPCPacket&)> requestCb) {
+void ChannelGroup::RegisterMAOutCB(std::function<void(char*, uint32_t)> requestCb) {
     cb_RequestMaData = requestCb;
 }
-
 
 void Channel::Pin(bool state) {
     if (m_pinned == state) { return; }
