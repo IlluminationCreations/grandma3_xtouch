@@ -21,8 +21,9 @@ bool operator<(const Address& a, const Address& b) {
 
 XTouchController::XTouchController() {
     SpawnServer(SERVER_XT);
-
     assert(g_xtouch != nullptr && "XTouch instance not created");
+    assert(g_delayedThreadScheduler != nullptr && "XTouch instance not created");
+
     g_xtouch->RegisterPacketSender([&](unsigned char *buffer, unsigned int len) 
     {
         assert(xt_server != nullptr && "Server not created");
@@ -43,11 +44,35 @@ XTouchController::XTouchController() {
     });
     g_xtouch->RegisterFaderCallback([&](unsigned char button, int attr)
     {
-        printf("Button %u hit, state = %u\n", button, attr);
+        // float adjusted = attr / 16380.0f;
+        // printf("Adjusted fader value %f\n", adjusted);
+        // g_delayedThreadScheduler->Update(static_cast<RegistrationId>(m_faders[button]), adjusted);
+        // printf("Button %u hit, state = %u\n", button, attr);
     });
     g_xtouch->RegisterFaderStateCallback([&](unsigned char button, int attr)
     {
-        printf("Button %u hit, state = %u\n", button, attr);
+        assert(button >= 0 && button < PHYSICAL_CHANNEL_COUNT);
+
+        auto addresses = m_group.CurrentChannelAddress();
+        auto address = addresses[button];
+        auto normalized_value = attr / 16380.0f; // 0.0f - 1.0f
+
+        IPC::IPCHeader header;
+        header.type = IPC::PacketType::UPDATE_MA_ENCODER;
+        header.seq = 0; // TODO: Implement sequence number
+
+        IPC::EncoderUpdate::Data packet;
+        packet.channel = address.subAddress;
+        packet.page = address.mainAddress;
+        packet.value = normalized_value * 100.0f;
+        packet.encoderType = 200; // Fader
+
+        auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::EncoderUpdate::Data);
+        char *buffer = (char*)malloc(packet_size);
+        memcpy(buffer, &header, sizeof(IPC::IPCHeader));
+        memcpy(buffer + sizeof(IPC::IPCHeader), &packet, sizeof(IPC::EncoderUpdate::Data));
+        ma_server.Send(buffer, packet_size);
+        free(buffer);
     });
 
     m_watchDog = std::thread(&XTouchController::WatchDog, this);
@@ -181,6 +206,7 @@ bool XTouchController::RefreshPlaybacksImpl() {
 
         m_group.UpdateEncoderIPC(*data, i);    
     }
+    free(buffer);
     return true;
 }
 
@@ -216,7 +242,7 @@ void Channel::UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder) {
 
         // 2xx fader
         if (i == 2) {
-            printf("Updating fader %u to %f\n", PHYSICAL_CHANNEL_ID, fractional_value);
+            // printf("Updating fader %u to %f\n", PHYSICAL_CHANNEL_ID, fractional_value);
             g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, fractional_value);
         }      
     }
@@ -311,6 +337,7 @@ void ChannelGroup::UpdateWatchList() {
     }
 
     if(cb_RequestMaData) { cb_RequestMaData(buffer, buffer_size); }
+    free(buffer);
 }
 
 void ChannelGroup::ChangePage(int32_t pageOffset) {

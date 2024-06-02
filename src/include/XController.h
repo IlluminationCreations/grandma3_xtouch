@@ -5,6 +5,7 @@
 #include <thread>
 #include <maserver.h>
 #include <string>
+#include <delayed.h>
 
 constexpr unsigned short xt_port = 10111;
 constexpr unsigned int PHYSICAL_CHANNEL_COUNT = 8;
@@ -45,7 +46,7 @@ namespace EncoderType {
 #define IPC_STRUCT struct __attribute__((__packed__))
 namespace IPC {
     namespace PacketType {
-        enum Type {UNKNOWN, REQ_ENCODERS, RESP_ENCODERS};
+        enum Type {UNKNOWN, REQ_ENCODERS, RESP_ENCODERS, UPDATE_MA_ENCODER, PRESS_MA_KEY};
     }
 
     IPC_STRUCT IPCHeader {
@@ -78,6 +79,16 @@ namespace IPC {
             bool keysActive[4]; // 4xx, 3xx, 2xx, 1xx keys are being used
         };
     }
+
+    namespace EncoderUpdate {
+        IPC_STRUCT Data {
+            uint16_t page;
+            uint8_t channel; // eg x01, x02, x03
+            uint8_t encoderType; // 400, 300, 200, 100
+            float value;
+        };
+    }
+
 }
 
 class XTouchData {

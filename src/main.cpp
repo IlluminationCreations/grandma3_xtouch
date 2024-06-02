@@ -63,6 +63,7 @@ DelayedExecuter *g_delayedThreadScheduler;
 
 int main(int, char**) {
    g_xtouch = new XTouch();
+   g_delayedThreadScheduler = new DelayedExecuter();
    XTouchController controller;
    while(true) {
       std::this_thread::sleep_for(std::chrono::hours(24));

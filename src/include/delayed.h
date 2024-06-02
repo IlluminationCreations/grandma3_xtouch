@@ -15,7 +15,7 @@ private:
     struct Execution {
         RegistrationId id;
         bool active;
-        uint32_t value;
+        float value;
         time_point lastTime;
         uint32_t delayDuration;
         std::function<void(float)> callback;
