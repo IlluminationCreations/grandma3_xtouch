@@ -5,6 +5,7 @@
 #include <vector>
 #include <functional>
 #include <Channel.h>
+#include <maserver.h>
 
 class ChannelGroup {
 public:
@@ -14,6 +15,7 @@ public:
     void ChangePage(int32_t pageOffset); 
     void ScrollPage(int32_t scrollOffset);
     void RegisterMAOutCB(std::function<void(char*, uint32_t)> requestCb);
+    void RegisterMaSend(MaUDPServer *server); // Temporary, will be removed after refactoring
     std::vector<Address> CurrentChannelAddress();
     void UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder, uint32_t physical_channel_id);
     void UpdateMasterFader(float value);
@@ -35,11 +37,16 @@ private:
     void TogglePinConfigMode();
     void GenerateChannelWindows();
     void HandleAddressChange(xt_alias_btn btn);
+    void RefreshPlaybacks();
+    bool RefreshPlaybacksImpl();
 
     // CBs
     std::function<void(char*, uint32_t)> cb_RequestMaData;
+    MaUDPServer *m_maServer;
+    std::function<void(char*, uint32_t)> cb_Send; // Temporary, will be removed after refactoring
 
     // "Other"
     Channel *m_channels;
     std::vector<std::vector<uint32_t>> m_channelWindows;
+    std::thread m_playbackRefresh;
 };

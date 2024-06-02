@@ -1,5 +1,6 @@
 #include <ChannelGroup.h>
 #include <set>
+#include <string.h>
 
 void ChannelGroup::HandleAddressChange(xt_alias_btn btn) {
     switch (btn) {
@@ -177,6 +178,10 @@ void ChannelGroup::ScrollPage(int32_t scrollOffset) {
     UpdateWatchList();
 }
 
+void ChannelGroup::RegisterMaSend(MaUDPServer *server) {
+    m_maServer = server;
+}
+
 void ChannelGroup::GenerateChannelWindows() {
     const auto pinned_addresses = [&]() -> std::set<Address> {
         auto pinned = std::set<Address>();
@@ -256,6 +261,8 @@ ChannelGroup::ChannelGroup() {
         g_xtouch->SetAssignment(page);
     });
     GenerateChannelWindows();
+    m_playbackRefresh = std::thread(&ChannelGroup::RefreshPlaybacks, this);
+    m_playbackRefresh.detach();
 }
 
 void ChannelGroup::RegisterMAOutCB(std::function<void(char*, uint32_t)> requestCb) {
@@ -265,4 +272,67 @@ void ChannelGroup::RegisterMAOutCB(std::function<void(char*, uint32_t)> requestC
 void ChannelGroup::HandleButtonPress(char button, bool down) {
     xt_alias_btn btnAlias = static_cast<xt_alias_btn>(button); 
      if (ButtonUtils::AddressChangingButton(static_cast<xt_buttons>(button))) {  HandleAddressChange(btnAlias); return; }
+}
+
+
+void ChannelGroup::RefreshPlaybacks() {
+    while (true) {
+        if (!RefreshPlaybacksImpl()) {
+            printf("Failed to refresh playbacks\n");
+        };
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+    }
+}
+
+bool ChannelGroup::RefreshPlaybacksImpl() {
+    if (!m_maServer) {return true;}
+    uint32_t seq = 0;
+
+    IPC::IPCHeader header;
+    header.type = IPC::PacketType::REQ_ENCODERS;
+    header.seq = seq;
+    IPC::PlaybackRefresh::Request request;
+    auto channels = CurrentChannelAddress();
+    for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
+        request.EncoderRequest[i].channel = channels[i].subAddress;
+        request.EncoderRequest[i].page = channels[i].mainAddress;
+    }
+
+    auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::PlaybackRefresh::Request);
+    char *buffer = (char*)malloc(4096);
+    memcpy(buffer, &header, sizeof(IPC::IPCHeader));
+    memcpy(buffer + sizeof(IPC::IPCHeader), &request, sizeof(IPC::PlaybackRefresh::Request));
+    m_maServer->Send(buffer, packet_size);
+
+    if (m_maServer->Read(buffer, 4096) < 0) {
+        printf("Failed to read from MA server\n");
+        return false;
+    }
+    IPC::IPCHeader *resp_header = (IPC::IPCHeader*)buffer;
+    if (resp_header->type != IPC::PacketType::RESP_ENCODERS) {
+        return false;
+    }
+    if (resp_header->seq != seq) {
+        return false;
+    }
+    IPC::PlaybackRefresh::ChannelMetadata resp_metadata;
+    memcpy(&resp_metadata, buffer + sizeof(IPC::IPCHeader), sizeof(IPC::PlaybackRefresh::ChannelMetadata));
+    UpdateMasterFader(resp_metadata.master);
+
+    IPC::PlaybackRefresh::Data *data = (IPC::PlaybackRefresh::Data*)(buffer);
+    for(int i = 0; i < 8; i++) {
+        if(!resp_metadata.channelActive[i]) {
+            DisablePhysicalChannel(i);
+            continue;
+        }
+        if (m_maServer->Read(buffer, 4096) < 0) {
+            printf("Failed to read from MA server\n");
+            return false;
+        }
+
+        UpdateEncoderIPC(*data, i);    
+    }
+    free(buffer);
+    return true;
 }

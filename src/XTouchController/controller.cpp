@@ -60,9 +60,8 @@ XTouchController::XTouchController() {
 
     m_watchDog = std::thread(&XTouchController::WatchDog, this);
     m_watchDog.detach();
-    m_playbackRefresh = std::thread(&XTouchController::RefreshPlaybacks, this);
-    m_playbackRefresh.detach();
     m_group.RegisterMAOutCB([](void*, uint32_t) {});
+    m_group.RegisterMaSend(&ma_server);
 }
 
 void XTouchController::UpdateMaEncoder(uint32_t physical_channel_id, int value) {
@@ -142,63 +141,3 @@ bool XTouchController::HandleButton(xt_buttons btn, bool down) {
     return false;
 }
 
-void XTouchController::RefreshPlaybacks() {
-    while (true) {
-        if (!RefreshPlaybacksImpl()) {
-            printf("Failed to refresh playbacks\n");
-        };
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(25));
-    }
-}
-
-bool XTouchController::RefreshPlaybacksImpl() {
-    uint32_t seq = 0;
-
-    IPC::IPCHeader header;
-    header.type = IPC::PacketType::REQ_ENCODERS;
-    header.seq = seq;
-    IPC::PlaybackRefresh::Request request;
-    auto channels = m_group.CurrentChannelAddress();
-    for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-        request.EncoderRequest[i].channel = channels[i].subAddress;
-        request.EncoderRequest[i].page = channels[i].mainAddress;
-    }
-
-    auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::PlaybackRefresh::Request);
-    char *buffer = (char*)malloc(4096);
-    memcpy(buffer, &header, sizeof(IPC::IPCHeader));
-    memcpy(buffer + sizeof(IPC::IPCHeader), &request, sizeof(IPC::PlaybackRefresh::Request));
-    ma_server.Send(buffer, packet_size);
-
-    if (ma_server.Read(buffer, 4096) < 0) {
-        printf("Failed to read from MA server\n");
-        return false;
-    }
-    IPC::IPCHeader *resp_header = (IPC::IPCHeader*)buffer;
-    if (resp_header->type != IPC::PacketType::RESP_ENCODERS) {
-        return false;
-    }
-    if (resp_header->seq != seq) {
-        return false;
-    }
-    IPC::PlaybackRefresh::ChannelMetadata resp_metadata;
-    memcpy(&resp_metadata, buffer + sizeof(IPC::IPCHeader), sizeof(IPC::PlaybackRefresh::ChannelMetadata));
-    m_group.UpdateMasterFader(resp_metadata.master);
-
-    IPC::PlaybackRefresh::Data *data = (IPC::PlaybackRefresh::Data*)(buffer);
-    for(int i = 0; i < 8; i++) {
-        if(!resp_metadata.channelActive[i]) {
-            m_group.DisablePhysicalChannel(i);
-            continue;
-        }
-        if (ma_server.Read(buffer, 4096) < 0) {
-            printf("Failed to read from MA server\n");
-            return false;
-        }
-
-        m_group.UpdateEncoderIPC(*data, i);    
-    }
-    free(buffer);
-    return true;
-}
