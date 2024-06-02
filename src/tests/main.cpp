@@ -430,13 +430,14 @@ namespace ChannelGroup_Tests {
     }
 }
 namespace DelayedExecution {
-    void Test() {
-        printf("-> Running DelayedExecution::Test\n");
-
+    void Test1() {
+        printf("-> Running DelayedExecution::Test1\n");
         bool cb_called = false;
         auto id = g_delayedThreadScheduler->Register([&](uint32_t) {
             cb_called = true;
         }, 250);
+
+        // Testing single update
         assert(cb_called == false);
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
         assert(cb_called == false);
@@ -444,6 +445,32 @@ namespace DelayedExecution {
         assert(cb_called == false);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         assert(cb_called == false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        assert(cb_called == true);
+    }
+    void Test2() {
+        printf("-> Running DelayedExecution::Test2\n");
+        bool cb_called = false;
+        auto id = g_delayedThreadScheduler->Register([&](uint32_t) {
+            cb_called = true;
+        }, 250);
+
+        // Test multiple updates, no callback should be called as
+        // the value is being updated before the delay has expired
+        g_delayedThreadScheduler->Update(id, 0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        assert(cb_called == false);
+        g_delayedThreadScheduler->Update(id, 0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        assert(cb_called == false);
+        g_delayedThreadScheduler->Update(id, 0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        assert(cb_called == false);
+        g_delayedThreadScheduler->Update(id, 0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        assert(cb_called == false);
+
+        // Allow delay to expire
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
         assert(cb_called == true);
     }
@@ -465,7 +492,8 @@ int main(int, char**) {
     ChannelGroup_Tests::CheckPinNotSeenTwice1();
 
     printf("------------ Running ChannelGroup tests ------------ \n");
-    DelayedExecution::Test();
+    DelayedExecution::Test1();
+    DelayedExecution::Test2();
 
     printf("---------------- TESTING COMPLETE ----------------\n");
     return 0;

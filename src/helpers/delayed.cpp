@@ -42,7 +42,7 @@ void DelayedExecuter::_threadimpl() {
     }
 }
 
-RegistrationId DelayedExecuter::Register(std::function<void(uint32_t)> callback, uint32_t delayDuration) {
+RegistrationId DelayedExecuter::Register(std::function<void(float)> callback, uint32_t delayDuration) {
     std::lock_guard<std::mutex> lock(m_mutex_data);
     Execution execution;
     execution.id = m_delayedExecutions.size();
@@ -55,15 +55,15 @@ RegistrationId DelayedExecuter::Register(std::function<void(uint32_t)> callback,
     return execution.id;
 }
 
-void DelayedExecuter::Update(RegistrationId id, uint32_t value) {
+void DelayedExecuter::Update(RegistrationId id, float value) {
     std::lock_guard<std::mutex> lock(m_mutex_data);
     auto &execution = m_delayedExecutions[id];
     execution.value = value;
+    execution.lastTime = clock::now(); // Reset time when turning active 
 
     if (!execution.active) { 
         execution.active = true;
-        execution.lastTime = clock::now(); // Reset time when turning active
-    } 
+    }
 
     _maybe_wake();
 }

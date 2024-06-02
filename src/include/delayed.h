@@ -18,7 +18,7 @@ private:
         uint32_t value;
         time_point lastTime;
         uint32_t delayDuration;
-        std::function<void(uint32_t)> callback;
+        std::function<void(float)> callback;
     };
     // Used to protect m_delayedExecutions
     std::mutex m_mutex_data;
@@ -37,8 +37,8 @@ private:
 
 public:
     DelayedExecuter();
-    RegistrationId Register(std::function<void(uint32_t)> callback, uint32_t delayDuration);
-    void Update(RegistrationId id, uint32_t value);
+    RegistrationId Register(std::function<void(float)> callback, uint32_t delayDuration);
+    void Update(RegistrationId id, float value);
 };
 
 extern DelayedExecuter *g_delayedThreadScheduler;
