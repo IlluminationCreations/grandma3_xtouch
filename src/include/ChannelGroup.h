@@ -1,7 +1,10 @@
 #pragma once
-
+#include <standard.h>
 #include <Observer.h>
 #include <Address.h>
+#include <vector>
+#include <functional>
+#include <Channel.h>
 
 class ChannelGroup {
 public:

@@ -1,2 +1,2 @@
-add_library(XTOUCHCONTROLLER_LIB controller.cpp)
+add_library(XTOUCHCONTROLLER_LIB channelgroup.cpp controller.cpp)
 target_link_libraries(XTOUCHCONTROLLER_LIB XTOUCH_LIB)

@@ -1,4 +1,5 @@
 
+#pragma once
 #define IPC_STRUCT struct __attribute__((__packed__))
 
 namespace IPC {

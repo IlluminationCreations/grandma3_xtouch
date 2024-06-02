@@ -1,7 +1,12 @@
 #pragma once
-
+#include <standard.h>
 #include <Observer.h>
 #include <Address.h>
+#include <x-touch.h>
+#include <string>
+#include <IPC.h>
+#include <guards.h>
+
 
 class Channel {
 private:
