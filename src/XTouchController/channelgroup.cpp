@@ -30,7 +30,6 @@ std::vector<Address> ChannelGroup::CurrentChannelAddress() {
     return std::move(addresses);
 }
 
-
 void ChannelGroup::DisablePhysicalChannel(uint32_t i) {
     assert(i >= 0 && i < 8);
     m_channels[i].Disable();
@@ -262,6 +261,7 @@ ChannelGroup::ChannelGroup() {
 void ChannelGroup::RegisterMAOutCB(std::function<void(char*, uint32_t)> requestCb) {
     cb_RequestMaData = requestCb;
 }
+
 void ChannelGroup::HandleButtonPress(char button, bool down) {
     xt_alias_btn btnAlias = static_cast<xt_alias_btn>(button); 
      if (ButtonUtils::AddressChangingButton(static_cast<xt_buttons>(button))) {  HandleAddressChange(btnAlias); return; }
