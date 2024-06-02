@@ -198,6 +198,7 @@ void ChannelGroup::UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder, uint32_t
 void Channel::Disable() {
     m_scribblePad.Colour = xt_colours_t::BLACK;
     g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
+    g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, 0);
 }
 
 void Channel::UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder) {

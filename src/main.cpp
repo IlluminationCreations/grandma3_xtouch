@@ -49,6 +49,7 @@ SOFTWARE.
 #include <thread>
 #include <XController.h>
 #include <assert.h>
+#include <delayed.h>
 
 // Global pointer to the XTouch object
 // It is preferable to use a global pointer to the XTouch object 
@@ -57,7 +58,8 @@ SOFTWARE.
 // This is a simple way to ensure that the XTouch object is available to all the physical display objects
 // The "proper" way to do this would be to use message passing/mailbox, but that is only necessary if our threading model
 // becomes more complex.
-XTouch *g_xtouch; 
+XTouch *g_xtouch;
+DelayedExecuter *g_delayedThreadScheduler;
 
 int main(int, char**) {
    g_xtouch = new XTouch();

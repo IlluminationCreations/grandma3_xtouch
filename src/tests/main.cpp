@@ -2,7 +2,12 @@
 #include <XController.h>
 #include <stdio.h>
 #include <memory.h>
-XTouch *g_xtouch; 
+#include <delayed.h>
+#include <chrono>
+#include <thread>
+
+XTouch *g_xtouch;
+DelayedExecuter *g_delayedThreadScheduler; 
 
 namespace ChannelGroup_Tests {
     IPC::IPCHeader Helper_GetHeader(void *data) {
@@ -424,9 +429,28 @@ namespace ChannelGroup_Tests {
 
     }
 }
+namespace DelayedExecution {
+    void Test() {
+        printf("-> Running DelayedExecution::Test\n");
 
+        bool cb_called = false;
+        auto id = g_delayedThreadScheduler->Register([&](uint32_t) {
+            cb_called = true;
+        }, 250);
+        assert(cb_called == false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        assert(cb_called == false);
+        g_delayedThreadScheduler->Update(id, 0);
+        assert(cb_called == false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        assert(cb_called == false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        assert(cb_called == true);
+    }
+}
 int main(int, char**) {
     g_xtouch = new XTouch();
+    g_delayedThreadScheduler = new DelayedExecuter();
 
     printf("------------ Running ChannelGroup tests ------------ \n");
     ChannelGroup_Tests::InitialState();
@@ -439,9 +463,10 @@ int main(int, char**) {
     ChannelGroup_Tests::CheckPinScrollPage();
     ChannelGroup_Tests::CheckPinChangePageAndScroll();
     ChannelGroup_Tests::CheckPinNotSeenTwice1();
-    // ChannelGroup_Tests::CheckPinScrollForwardTestBack();
+
+    printf("------------ Running ChannelGroup tests ------------ \n");
+    DelayedExecution::Test();
 
     printf("---------------- TESTING COMPLETE ----------------\n");
-
     return 0;
 }
