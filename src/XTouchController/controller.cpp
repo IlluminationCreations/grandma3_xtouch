@@ -33,15 +33,15 @@ XTouchController::XTouchController() {
 
     g_xtouch->RegisterButtonCallback([&](unsigned char button, int attr)
     {
-        if (attr == 0) { return; } // No special handling for button up, yet.
-
-        if(!HandleButton(static_cast<xt_buttons>(button))) {
+        if(!HandleButton(static_cast<xt_buttons>(button), attr == 0)) {
             printf("Button %u hit, state = %u\n", button, attr);
         }
     });
     g_xtouch->RegisterDialCallback([&](unsigned char button, int attr)
     {
-        printf("Button %u hit, szate = %d\n", button, attr);
+        // auto base_address = button - 16; // 16 is the first dial
+        // assert(base_address >= 0 && base_address < PHYSICAL_CHANNEL_COUNT);
+        // UpdateMaEncoder(button, attr);
     });
     g_xtouch->RegisterFaderCallback([&](unsigned char button, int attr)
     {
@@ -137,27 +137,29 @@ void PlaybackGroup::Update() {
 
 }
 
-bool XTouchController::HandleButton(xt_buttons btn) {
+bool XTouchController::HandleButton(xt_buttons btn, bool down) {
+    if (!down) { return true; } // No special handling for button down, yet. Only button up.
+
     xt_alias_btn btnAlias = static_cast<xt_alias_btn>(btn);
     if (m_group.m_pinConfigMode || btnAlias == xt_alias_btn::PIN) { m_group.UpdatePinnedChannels(btn); return true; }
-    if (ButtonUtils::AddressChangingButton(btn)) { HandleAddressChange(btnAlias); return true; }
+    if (ButtonUtils::AddressChangingButton(btn)) {  m_group.HandleButtonPress(btnAlias, down); return true;}
     return false;
 }
 
-void XTouchController::HandleAddressChange(xt_alias_btn btn) {
+void ChannelGroup::HandleAddressChange(xt_alias_btn btn) {
     switch (btn) {
         case xt_alias_btn::EXECUTER_SCROLL_LEFT: 
         case xt_alias_btn::EXECUTER_SCROLL_RIGHT: 
         {
             uint32_t offset = btn == xt_alias_btn::EXECUTER_SCROLL_LEFT ? -1 : 1;
-            m_group.ScrollPage(offset);
+            ScrollPage(offset);
             return;
         }
         case xt_alias_btn::PAGE_DEC:
         case xt_alias_btn::PAGE_INC: 
         {
             uint32_t offset = btn == xt_alias_btn::PAGE_DEC ? -1 : 1; 
-            m_group.ChangePage(offset);
+            ChangePage(offset);
             return;
         }
         default: { assert(false); }
@@ -245,14 +247,15 @@ void ChannelGroup::UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder, uint32_t
 }
 
 void Channel::Disable() {
-    m_scribblePad.Colour = xt_colours_t::BLACK;
+    m_scribblePad.Colour = xt_colours_t::RED;
     g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
     g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, 0);
 }
 
 void Channel::UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder) {
     auto address = m_address->Get();
-    assert(address.mainAddress == encoder.page && address.subAddress == encoder.channel);
+    ASSERT_EQ_INT(address.mainAddress, encoder.page);
+    ASSERT_EQ_INT(address.subAddress, encoder.channel);
 
     // 0,   1,   2
     // 4xx, 3xx, 2xx encoders
@@ -552,4 +555,9 @@ void Channel::Pin(bool state) {
 
 bool Channel::IsPinned() {
     return m_pinned;
+}
+
+void ChannelGroup::HandleButtonPress(char button, bool down) {
+    xt_alias_btn btnAlias = static_cast<xt_alias_btn>(button); 
+     if (ButtonUtils::AddressChangingButton(static_cast<xt_buttons>(button))) {  HandleAddressChange(btnAlias); return; }
 }
