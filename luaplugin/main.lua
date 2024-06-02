@@ -170,8 +170,8 @@ local function unpack(format, stream, pos)
 	  if exponent == 0 then
 		table.insert(vars, 0.0)
 	  else
-		mantissa = (math.ldexp(mantissa, (opt == 'd') and -52 or -23) + 1) * sign
-		table.insert(vars, math.ldexp(mantissa, exponent - ((opt == 'd') and 1023 or 127)))
+		mantissa = (ldexp(mantissa, (opt == 'd') and -52 or -23) + 1) * sign
+		table.insert(vars, ldexp(mantissa, exponent - ((opt == 'd') and 1023 or 127)))
 	  end
 	elseif opt == 's' then
 	  local bytes = {}
@@ -232,6 +232,8 @@ end
 ----------------------------------------------
 local TYPE_REQ_ENCODERS = 1
 local TYPE_RESP_ENCODERS = 2
+local TYPE_UPDATE_MA_ENCODER = 3
+local TYPE_UPDATE_MA_MASTER = 4
 local function ExtractEncoderRequest(conn)
 	-- IPC_STRUCT {
 	-- 	unsigned int page;
@@ -243,7 +245,7 @@ local function ExtractEncoderRequest(conn)
 
 	for i = 1, 8 do
 		local page, channel = conn.stream:read("<II")
-		Printf("Page: " .. tostring(page)   .. " Channel: " .. tostring(channel))
+		-- Printf("Page: " .. tostring(page)   .. " Channel: " .. tostring(channel))
 		local req = {}
 		req["page"] = page
 		req["channel"] = channel
@@ -310,21 +312,21 @@ local function SendEncoderData(connection, encoderObj)
 	-- 	} Encoders[3]; // 4xx, 3xx, 2xx encoders
 	-- 	bool keysActive[4]; // 4xx, 3xx, 2xx, 1xx keys are being used
 	-- };
-	Printf("encoderObj -- page: " .. tostring(encoderObj.page) .. " channel: " .. tostring(encoderObj.channel))
+	-- Printf("encoderObj -- page: " .. tostring(encoderObj.page) .. " channel: " .. tostring(encoderObj.channel))
 	local packet_data = pack("<HB", encoderObj.page, encoderObj.channel) 
 
 	-- Encoders
 	for i=1, 3 do
 		local encoder = encoderObj.unsafeEncoders[i]
 		if encoder == nil or encoder["FADER"] == "" then
-			Printf("Encoder is nil on page " .. tostring(encoderObj.page) .. " channel " .. tostring(encoderObj.channel))
+			-- Printf("Encoder is nil on page " .. tostring(encoderObj.page) .. " channel " .. tostring(encoderObj.channel))
 			packet_data = packet_data .. pack("<Bc8f", 0, "        ", 0)
 		else
 			if encoder["FADER"] == "" then
-				Printf("empty text")
+				-- Printf("empty text")
 			end
-			Printf("Encoder is not nil on page " .. tostring(encoderObj.page) .. " channel " .. tostring(encoderObj.channel))
-			Printf("Encoder name: " .. encoder["FADER"] .. " value: " .. encoder:GetFader({}))
+			-- Printf("Encoder is not nil on page " .. tostring(encoderObj.page) .. " channel " .. tostring(encoderObj.channel))
+			-- Printf("Encoder name: " .. encoder["FADER"] .. " value: " .. encoder:GetFader({}))
 			packet_data = packet_data .. pack("<Bc8f", 1, string.sub(encoder["FADER"], 1, 8), encoder:GetFader({}))
 		end
 	end
@@ -361,11 +363,11 @@ local function REQ_ENCODERS(connection, seq)
 	local arrbEncoderActive = {}
 	local arrEncoders = {}
 	for k, v in ipairs(requests) do
-		Printf("Processing request -- page " .. tostring(v["page"]) .. " channel " .. tostring(v["channel"]))
+		-- Printf("Processing request -- page " .. tostring(v["page"]) .. " channel " .. tostring(v["channel"]))
 		local page_ptr = page_cache[v["page"]]
 		if page_ptr == nil then
 			table.insert(arrbEncoderActive, 0)
-			Printf("[" .. tostring(k) .. "] false")
+			-- Printf("[" .. tostring(k) .. "] false")
 			goto continue
 		end
 
@@ -393,6 +395,27 @@ local function REQ_ENCODERS(connection, seq)
 	end
 end
 
+local function UPDATE_MA_MASTER(connection, seq)
+	local value = connection.stream:read("<f")
+	Root().ShowData.Masters.Grand.Master:SetFader({value=value})
+end
+
+local function UPDATE_MA_ENCODER(connection, seq)
+	local page, channel, encoderType, value = connection.stream:read("<HBBf")
+	encoderType = encoderType - 100 -- Convert to 0-based index, kinda confusing
+	local page = Root().ShowData.DataPools.Default.Pages:Ptr(page)
+	if not page then
+		Printf("Page not found")
+		return
+	end
+	local ch = page:Ptr(channel + encoderType)
+	if not ch then
+		Printf("Channel not found")
+		return
+	end
+	ch:SetFader({value=value})
+end
+
 local function HandleConnection(socket, ip, port, data)
 	if not data then return end
 
@@ -406,8 +429,11 @@ local function HandleConnection(socket, ip, port, data)
 	pkt_type, seq = stream:read("<II")
 	-- Handlers
 	if pkt_type == TYPE_REQ_ENCODERS then
-		Printf("In")
 		REQ_ENCODERS(connection, seq)
+	elseif pkt_type == TYPE_UPDATE_MA_ENCODER then
+		UPDATE_MA_ENCODER(connection, seq)
+	elseif pkt_type == TYPE_UPDATE_MA_MASTER then
+		UPDATE_MA_MASTER(connection, seq)
 	end
 end
 
@@ -422,8 +448,11 @@ local function BeginListening()
 	Printf("Entering loop")
 	while true do
 		local data, ip, port = udp:receivefrom()
-		HandleConnection(udp, ip, port, data)
-		coroutine.yield(.1)
+		if data then
+			HandleConnection(udp, ip, port, data)
+		else
+			coroutine.yield(.1)
+		end
 	end
 end
 
