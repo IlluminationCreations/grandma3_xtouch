@@ -53,8 +53,8 @@ XTouchController::XTouchController() {
     g_xtouch->RegisterFaderStateCallback([&](unsigned char button, int attr)
     {
         assert(button >= 0 && button <= PHYSICAL_CHANNEL_COUNT);
-        if (button < 8) { UpdateMaEncoder(button, attr);}
-        else { UpdateMasterEncoder(attr); }
+        if (button < 8) { m_group.UpdateMaEncoder(button, attr);}
+        else { m_group.UpdateMasterEncoder(attr); }
 
     });
 
@@ -62,46 +62,6 @@ XTouchController::XTouchController() {
     m_watchDog.detach();
     m_group.RegisterMAOutCB([](void*, uint32_t) {});
     m_group.RegisterMaSend(&ma_server);
-}
-
-void XTouchController::UpdateMaEncoder(uint32_t physical_channel_id, int value) {
-    auto addresses = m_group.CurrentChannelAddress();
-    auto address = addresses[physical_channel_id];
-    auto normalized_value = value / 16380.0f; // 0.0f - 1.0f
-
-    IPC::IPCHeader header;
-    header.type = IPC::PacketType::UPDATE_MA_ENCODER;
-    header.seq = 0; // TODO: Implement sequence number
-
-    IPC::EncoderUpdate::Data packet;
-    packet.channel = address.subAddress;
-    packet.page = address.mainAddress;
-    packet.value = normalized_value * 100.0f;
-    packet.encoderType = 200; // Fader
-
-    auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::EncoderUpdate::Data);
-    char *buffer = (char*)malloc(packet_size);
-    memcpy(buffer, &header, sizeof(IPC::IPCHeader));
-    memcpy(buffer + sizeof(IPC::IPCHeader), &packet, sizeof(IPC::EncoderUpdate::Data));
-    ma_server.Send(buffer, packet_size);
-    free(buffer);
-}
-
-void XTouchController::UpdateMasterEncoder(int value) {
-    auto normalized_value = value / 16380.0f; // 0.0f - 1.0f
-
-    IPC::IPCHeader header;
-    header.type = IPC::PacketType::UPDATE_MA_MASTER;
-    header.seq = 0; // TODO: Implement sequence number
-    IPC::EncoderUpdate::MasterData packet;
-    packet.value = normalized_value * 100.0f;
-
-    auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::EncoderUpdate::Data);
-    char *buffer = (char*)malloc(packet_size);
-    memcpy(buffer, &header, sizeof(IPC::IPCHeader));
-    memcpy(buffer + sizeof(IPC::IPCHeader), &packet, sizeof(IPC::EncoderUpdate::Data));
-    ma_server.Send(buffer, packet_size);
-    free(buffer);
 }
 
 void XTouchController::WatchDog() {

@@ -38,9 +38,6 @@ private:
     void WatchDog();
     void SpawnServer(SpawnType type);
     bool HandleButton(xt_buttons btn, bool down);
-    
-    void UpdateMaEncoder(uint32_t physical_channel_id, int value);
-    void UpdateMasterEncoder(int value);
 };
 
 

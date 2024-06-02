@@ -24,6 +24,9 @@ public:
     void HandleFaderUpdate(char button, int value);
     void HandleDialUpdate(char button, int value);
     void HandleButtonPress(char button, bool down);
+    
+    void UpdateMaEncoder(uint32_t physical_channel_id, int value);
+    void UpdateMasterEncoder(int value);
 
     bool m_pinConfigMode = false;
     Observer<uint32_t> *m_page; // Concrete concept
