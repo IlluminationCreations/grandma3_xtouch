@@ -451,7 +451,7 @@ local function BeginListening()
 		if data then
 			HandleConnection(udp, ip, port, data)
 		else
-			coroutine.yield(.1)
+			coroutine.yield(0)
 		end
 	end
 end

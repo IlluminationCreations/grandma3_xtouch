@@ -108,7 +108,7 @@ void XTouchController::UpdateMasterEncoder(int value) {
 void XTouchController::WatchDog() {
     while(true) {
         if (!xt_server->Alive()) { SpawnServer(SERVER_XT); }
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 }
 
