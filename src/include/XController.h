@@ -28,16 +28,6 @@ namespace EncoderType {
      }; 
 }
 
-class XTouchData {
-    uint32_t Page;
-};
-
-class PlaybackGroup {
-    uint32_t m_page;
-    uint32_t m_index; // 
-    void Update();
-};
-
 class XTouchController {
 public:
     XTouchController();

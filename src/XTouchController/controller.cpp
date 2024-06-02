@@ -133,10 +133,6 @@ void XTouchController::SpawnServer(SpawnType type) {
     }
 }
 
-void PlaybackGroup::Update() {
-
-}
-
 bool XTouchController::HandleButton(xt_buttons btn, bool down) {
     if (!down) { return true; } // No special handling for button down, yet. Only button up.
 
