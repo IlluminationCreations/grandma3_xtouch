@@ -188,7 +188,6 @@ private:
     std::thread m_playbackRefresh;
 
     void WatchDog();
-    void MeterRefresh();
     void SpawnServer(SpawnType type);
     bool HandleButton(xt_buttons btn);
     void HandleAddressChange(xt_alias_btn btn);
