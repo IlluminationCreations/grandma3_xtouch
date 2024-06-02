@@ -6,6 +6,7 @@
 #include <memory>
 #include <string.h>
 #include <guards.h>
+#include <cmath>
 
 bool operator<(const Address& a, const Address& b) {
     if (a.mainAddress == b.mainAddress && a.subAddress == b.subAddress) { return false; }
@@ -178,7 +179,7 @@ void XTouchController::RefreshPlaybacks() {
             printf("Failed to refresh playbacks\n");
         };
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
     }
 }
 bool XTouchController::RefreshPlaybacksImpl() {
@@ -258,15 +259,34 @@ void Channel::UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder) {
     for(int i = 0; i < 3; i++) {
         // Guard Update name
         // Guard Update value
-        auto normalized_value = encoder.Encoders[i].value / 100.0f;
-        auto fractional_value = 16380 * normalized_value;
-        m_encoders.encoders[i].value = fractional_value;
+        auto normalized_value = encoder.Encoders[i].value / 100.0f; // 100.f -> (0.0f, 1.0f)
 
-        // 2xx fader
-        if (i == 2) {
-            // printf("Updating fader %u to %f\n", PHYSICAL_CHANNEL_ID, fractional_value);
-            g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, fractional_value);
-        }      
+        switch (i) {
+            // 4xx (dial lights)
+            case 0: {
+                auto proportion = round(13 * normalized_value);
+                uint32_t integer_value = static_cast<uint32_t>(proportion);
+                m_encoders.encoders[i].value = integer_value;
+                g_xtouch->SetDialLevel(PHYSICAL_CHANNEL_ID - 1, integer_value);
+                break;
+            }
+            // 3xx (sound meter lights)
+            case 1: {
+                auto proportion = round(9 * normalized_value);
+                uint32_t integer_value = static_cast<uint32_t>(proportion);
+                m_encoders.encoders[i].value = integer_value;
+                g_xtouch->SetMeterLevel(PHYSICAL_CHANNEL_ID - 1, integer_value);
+                break;
+
+            }
+            // 2xx (fader)
+            case 2: {
+                auto fractional_value = 16380 * normalized_value;
+                m_encoders.encoders[i].value = fractional_value;
+                g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, fractional_value);
+                break;
+            }
+        }    
     }
 }
 
