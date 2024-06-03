@@ -377,6 +377,7 @@ void ChannelGroup::HandleUpdate(UpdateType type, char button, int value) {
         case UpdateType::MASTER: 
         {  
             UpdateMasterEncoder(value); 
+            break;
         }
         default: { assert(false); }
     }
