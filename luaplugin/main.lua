@@ -463,7 +463,7 @@ local function BeginListening()
 end
 
 function SendPacket(connection_object, packet_data)
-	Printf("Sending data")
+	-- Printf("Sending data")
 	connection_object.conn:sendto(packet_data, connection_object.ip, connection_object.port)
 end
 
