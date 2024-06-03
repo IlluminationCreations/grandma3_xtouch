@@ -45,18 +45,17 @@ XTouchController::XTouchController() {
     });
     g_xtouch->RegisterFaderCallback([&](unsigned char button, int attr)
     {
-        // float adjusted = attr / 16380.0f;
-        // printf("Adjusted fader value %f\n", adjusted);
-        // g_delayedThreadScheduler->Update(static_cast<RegistrationId>(m_faders[button]), adjusted);
-        // printf("Button %u hit, state = %u\n", button, attr);
-    });
-    g_xtouch->RegisterFaderStateCallback([&](unsigned char button, int attr)
-    {
         assert(button >= 0 && button <= PHYSICAL_CHANNEL_COUNT);
-        if (button < 8) { m_group.UpdateMaEncoder(button, attr);}
+        if (button < 8) { m_group.UpdateEncoderFromXT(button, attr);}
         else { m_group.UpdateMasterEncoder(attr); }
-
     });
+    // g_xtouch->RegisterFaderStateCallback([&](unsigned char fader, int attr)
+    // {
+    //     assert(fader >= 0 && fader <= PHYSICAL_CHANNEL_COUNT);
+    //     bool down = attr == 1;
+
+    //     m_group.FaderTouchState(fader, down); 
+    // });
 
     m_watchDog = std::thread(&XTouchController::WatchDog, this);
     m_watchDog.detach();

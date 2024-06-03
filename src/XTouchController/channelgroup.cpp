@@ -1,6 +1,7 @@
 #include <ChannelGroup.h>
 #include <set>
 #include <string.h>
+#include <delayed.h>
 
 void ChannelGroup::HandleAddressChange(xt_alias_btn btn) {
     switch (btn) {
@@ -36,10 +37,10 @@ void ChannelGroup::DisablePhysicalChannel(uint32_t i) {
     m_channels[i].Disable();
 }
 
-void ChannelGroup::UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder, uint32_t physical_channel_id) {
+void ChannelGroup::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, uint32_t physical_channel_id) {
     assert(physical_channel_id >= 0 && physical_channel_id < 8);
     auto &channel = m_channels[physical_channel_id];
-    channel.UpdateEncoderIPC(encoder);
+    channel.UpdateEncoderFromMA(encoder);
 }
 
 void ChannelGroup::UpdateMasterFader(float unnormalized_value) {
@@ -180,6 +181,9 @@ void ChannelGroup::ScrollPage(int32_t scrollOffset) {
 
 void ChannelGroup::RegisterMaSend(MaUDPServer *server) {
     m_maServer = server;
+    for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
+        m_channels[i].RegisterMaSend(server);
+    }
 }
 
 void ChannelGroup::GenerateChannelWindows() {
@@ -257,9 +261,11 @@ ChannelGroup::ChannelGroup() {
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
         auto channel = new (&m_channels[i]) Channel(i + 1);
     }
+
     m_page = new Observer<uint32_t>(1, [](uint32_t page) { 
         g_xtouch->SetAssignment(page);
     });
+    
     GenerateChannelWindows();
     m_playbackRefresh = std::thread(&ChannelGroup::RefreshPlaybacks, this);
     m_playbackRefresh.detach();
@@ -286,6 +292,8 @@ void ChannelGroup::RefreshPlaybacks() {
 }
 
 bool ChannelGroup::RefreshPlaybacksImpl() {
+    using namespace std::chrono;
+
     if (!m_maServer) {return true;}
     uint32_t seq = 0;
 
@@ -331,34 +339,14 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
             return false;
         }
 
-        UpdateEncoderIPC(*data, i);    
+        UpdateEncoderFromMA(*data, i);    
     }
     free(buffer);
     return true;
 }
 
-void ChannelGroup::UpdateMaEncoder(uint32_t physical_channel_id, int value) {
-    if (!m_maServer) {return;}
-    auto addresses = CurrentChannelAddress();
-    auto address = addresses[physical_channel_id];
-    auto normalized_value = value / 16380.0f; // 0.0f - 1.0f
-
-    IPC::IPCHeader header;
-    header.type = IPC::PacketType::UPDATE_MA_ENCODER;
-    header.seq = 0; // TODO: Implement sequence number
-
-    IPC::EncoderUpdate::Data packet;
-    packet.channel = address.subAddress;
-    packet.page = address.mainAddress;
-    packet.value = normalized_value * 100.0f;
-    packet.encoderType = 200; // Fader
-
-    auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::EncoderUpdate::Data);
-    char *buffer = (char*)malloc(packet_size);
-    memcpy(buffer, &header, sizeof(IPC::IPCHeader));
-    memcpy(buffer + sizeof(IPC::IPCHeader), &packet, sizeof(IPC::EncoderUpdate::Data));
-    m_maServer->Send(buffer, packet_size);
-    free(buffer);
+void ChannelGroup::UpdateEncoderFromXT(uint32_t physical_channel_id, int value) {
+    m_channels[physical_channel_id].UpdateEncoderFromXT(value);
 }
 
 void ChannelGroup::UpdateMasterEncoder(int value) {

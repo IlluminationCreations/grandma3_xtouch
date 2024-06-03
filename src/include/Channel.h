@@ -6,10 +6,13 @@
 #include <string>
 #include <IPC.h>
 #include <guards.h>
-
+#include <maserver.h>
+#include <chrono>
 
 class Channel {
 private:
+    using clock = std::chrono::high_resolution_clock;
+    using time_point = std::chrono::time_point<clock>;
     struct EncoderColumn {
         struct {
             bool active;
@@ -23,13 +26,19 @@ private:
     xt_ScribblePad_t m_scribblePad;
     bool m_pinned = false;
     EncoderColumn m_encoders;
+    MaUDPServer *m_maServer;
+    time_point m_lastPhysicalChange;
 
 public:
     Channel(uint32_t id);
-    void UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder);
+    // Updates internal value, and sends data to GrandMA3
+    void UpdateEncoderFromXT(int value);
+    // Updates value and fader based on GrandMA3 state
+    void UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder);
     void Pin(bool state);
     bool IsPinned();
     void Disable();
+    void RegisterMaSend(MaUDPServer *server);
 
     const uint32_t PHYSICAL_CHANNEL_ID;
     Observer<Address> *m_address; // Virtual address / represents channel within MA

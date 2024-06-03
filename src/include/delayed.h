@@ -39,6 +39,8 @@ public:
     DelayedExecuter();
     RegistrationId Register(std::function<void(float)> callback, uint32_t delayDuration);
     void Update(RegistrationId id, float value);
+    // Immediately execute the callback of a delayed execution
+    void ForcedUpdate(RegistrationId id, float value);
 };
 
 extern DelayedExecuter *g_delayedThreadScheduler;

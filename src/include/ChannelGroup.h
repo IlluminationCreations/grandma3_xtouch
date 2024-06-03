@@ -6,6 +6,10 @@
 #include <functional>
 #include <Channel.h>
 #include <maserver.h>
+#include <mutex>
+#include <delayed.h>
+#include <chrono>
+
 
 class ChannelGroup {
 public:
@@ -17,15 +21,15 @@ public:
     void RegisterMAOutCB(std::function<void(char*, uint32_t)> requestCb);
     void RegisterMaSend(MaUDPServer *server); // Temporary, will be removed after refactoring
     std::vector<Address> CurrentChannelAddress();
-    void UpdateEncoderIPC(IPC::PlaybackRefresh::Data encoder, uint32_t physical_channel_id);
+    void UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, uint32_t physical_channel_id);
     void UpdateMasterFader(float value);
     void DisablePhysicalChannel(uint32_t channel);
 
     void HandleFaderUpdate(char button, int value);
     void HandleDialUpdate(char button, int value);
     void HandleButtonPress(char button, bool down);
-    
-    void UpdateMaEncoder(uint32_t physical_channel_id, int value);
+
+    void UpdateEncoderFromXT(uint32_t physical_channel_id, int value);
     void UpdateMasterEncoder(int value);
 
     bool m_pinConfigMode = false;

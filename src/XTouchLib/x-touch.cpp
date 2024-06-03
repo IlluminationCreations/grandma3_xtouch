@@ -88,7 +88,7 @@ void XTouch::RegisterFaderCallback(EventCallback handler) {
 
 // The handler registered here will be called whenever a fader is touched or released
 void XTouch::RegisterFaderStateCallback(EventCallback handler) {
-    m_faderCallBack = handler;
+    m_faderStateCallBack = handler;
 }
 
 // The handler registered here will be called whenever a dial or jog wheel is turned

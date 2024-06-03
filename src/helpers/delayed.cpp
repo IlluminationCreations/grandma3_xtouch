@@ -55,9 +55,13 @@ RegistrationId DelayedExecuter::Register(std::function<void(float)> callback, ui
     return execution.id;
 }
 
+// Update the value of a delayed execution, only if the value has changed
 void DelayedExecuter::Update(RegistrationId id, float value) {
     std::lock_guard<std::mutex> lock(m_mutex_data);
     auto &execution = m_delayedExecutions[id];
+
+    if (execution.value == value) { return; }
+
     execution.value = value;
     execution.lastTime = clock::now(); // Reset time when turning active 
 
@@ -66,4 +70,15 @@ void DelayedExecuter::Update(RegistrationId id, float value) {
     }
 
     _maybe_wake();
+}
+
+void DelayedExecuter::ForcedUpdate(RegistrationId id, float value) {
+    std::lock_guard<std::mutex> lock(m_mutex_data);
+    auto &execution = m_delayedExecutions[id];
+
+    if (execution.value == value) { return; }
+
+    execution.value = value;
+    execution.active = false;
+    execution.callback(execution.value);
 }
