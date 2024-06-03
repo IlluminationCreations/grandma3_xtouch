@@ -401,7 +401,7 @@ local function UPDATE_MA_MASTER(connection, seq)
 end
 
 local function UPDATE_MA_ENCODER(connection, seq)
-	local page, channel, encoderType, value = connection.stream:read("<HBBf")
+	local page, channel, encoderType, value = connection.stream:read("<HBHf")
 	encoderType = encoderType - 100 -- Convert to 0-based index, kinda confusing
 	local page = Root().ShowData.DataPools.Default.Pages:Ptr(page)
 	if not page then
