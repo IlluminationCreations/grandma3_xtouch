@@ -319,11 +319,13 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
     m_maServer->Send(buffer, packet_size);
 
     if (m_maServer->Read(buffer, 4096) < 0) {
+        // assert(false && "Failed to read from MA server");
         printf("Failed to read from MA server\n");
         return false;
     }
-    IPC::IPCHeader *resp_header = (IPC::IPCHeader*)buffer;
-    if (resp_header->type != IPC::PacketType::RESP_ENCODERS) {
+    IPC::IPCHeader resp_header;
+    memcpy(&resp_header, buffer, sizeof(IPC::IPCHeader));
+    if (resp_header.type != IPC::PacketType::RESP_ENCODERS) {
         return false;
     }
 
@@ -331,13 +333,14 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
     memcpy(&resp_metadata, buffer + sizeof(IPC::IPCHeader), sizeof(IPC::PlaybackRefresh::ChannelMetadata));
     UpdateMasterFader(resp_metadata.master);
 
-    if (resp_header->seq != m_sequence) {
+    if (resp_header.seq != m_sequence) {
         for(int i = 0; i < 8; i++) {
             // Empty receive buffer
             if(resp_metadata.channelActive[i]) {
                 m_maServer->Read(buffer, 4096);
             }
         }
+        return false;
     }
 
     IPC::PlaybackRefresh::Data *data = (IPC::PlaybackRefresh::Data*)(buffer);
