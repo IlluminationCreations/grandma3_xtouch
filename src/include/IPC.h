@@ -13,6 +13,9 @@ namespace IPC {
     };
 
     namespace PlaybackRefresh {
+        // =============================================
+        // ============== REQ_ENCODERS =================
+        // =============================================
         IPC_STRUCT Request {
             IPC_STRUCT {
                 unsigned int page;
@@ -20,6 +23,9 @@ namespace IPC {
             } EncoderRequest[8];
         };
 
+        // =============================================
+        // ============== RESP_ENCODERS ================
+        // =============================================
         IPC_STRUCT ChannelMetadata {
             float master; // Master fader
             bool channelActive[8]; // True if channel/playback has any active encoders or keys

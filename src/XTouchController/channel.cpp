@@ -34,8 +34,6 @@ void Channel::UpdateEncoderFromXT(int value, bool isFader) {
     memcpy(buffer + sizeof(IPC::IPCHeader), &packet, sizeof(IPC::EncoderUpdate::Data));
     m_maServer->Send(buffer, packet_size);
     free(buffer);
-
-    m_lastPhysicalChange = std::chrono::system_clock::now();
 }
 
 void Channel::UpdateDial(int value) {
@@ -76,8 +74,6 @@ void Channel::UpdateDial(int value) {
     memcpy(buffer + sizeof(IPC::IPCHeader), &packet, sizeof(IPC::EncoderUpdate::Data));
     m_maServer->Send(buffer, packet_size);
     free(buffer);
-
-    m_lastPhysicalChange = std::chrono::system_clock::now();
 }
 
 void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
@@ -85,8 +81,6 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
     ASSERT_EQ_INT(address.mainAddress, encoder.page);
     ASSERT_EQ_INT(address.subAddress, encoder.channel);
 
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange);
-    if (duration.count() < 500) { return;}
     // 0,   1,   2
     // 4xx, 3xx, 2xx encoders
     for(int i = 0; i < 3; i++) {
@@ -111,13 +105,8 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
                 uint32_t integer_value = static_cast<uint32_t>(proportion);
                 if (m_encoders.encoders[i].value == encoder.Encoders[i].value) { break; }
                 m_encoders.encoders[i].value = encoder.Encoders[i].value;
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange);
-                if (duration.count() < 500) { break; }
                 g_xtouch->SetMeterLevel(PHYSICAL_CHANNEL_ID - 1, integer_value);
                 break;
-
-
-
             }
             // 2xx (fader)
             case 2: {
@@ -152,7 +141,6 @@ Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
         snprintf(m_scribblePad.BotText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
         g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad); // PHYSICAL_CHANNEL_ID is 1-indexed, scribble is 0-indexed
     });
-    m_lastPhysicalChange = std::chrono::system_clock::now();
 }
 
 void Channel::UpdateScribbleAddress() {

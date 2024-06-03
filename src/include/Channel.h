@@ -11,8 +11,6 @@
 
 class Channel {
 private:
-    using clock = std::chrono::high_resolution_clock;
-    using time_point = std::chrono::time_point<clock>;
     struct EncoderColumn {
         // 0 = 4xx, 1 = 3xx, 2 = 2xx
         struct {
@@ -28,7 +26,6 @@ private:
     bool m_pinned = false;
     EncoderColumn m_encoders;
     MaUDPServer *m_maServer;
-    time_point m_lastPhysicalChange;
     bool m_toggle = false;
     void UpdateDial(int value);
 
