@@ -45,7 +45,17 @@ void Channel::UpdateDial(int value) {
     auto &enc = m_toggle ? m_encoders.encoders[1] : m_encoders.encoders[0]; 
     auto current_value = enc.value;
 
-    auto scaled_value = current_value + (1.0f * value); // Value is "relative" from XT (eg (-3,3))
+
+    auto func = [](int x) -> float {
+        bool negative = x < 0;
+        auto _pow = pow(abs(x), 1.2);
+        auto result = (0.665 * _pow);
+        result = negative ? -result : result;
+        printf("Result: %f - pow: %f - x: %d\n", result, _pow, x);
+        return result;
+    };
+
+    auto scaled_value = current_value + func(value); // Value is "relative" from XT (eg (-3,3))
     auto top = fmax(scaled_value, 0.0f);
     auto bottom = fmin(top, 100.0f);
     enc.value = bottom;
@@ -66,6 +76,8 @@ void Channel::UpdateDial(int value) {
     memcpy(buffer + sizeof(IPC::IPCHeader), &packet, sizeof(IPC::EncoderUpdate::Data));
     m_maServer->Send(buffer, packet_size);
     free(buffer);
+
+    m_lastPhysicalChange = std::chrono::system_clock::now();
 }
 
 void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
@@ -73,6 +85,8 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
     ASSERT_EQ_INT(address.mainAddress, encoder.page);
     ASSERT_EQ_INT(address.subAddress, encoder.channel);
 
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange);
+    if (duration.count() < 500) { return;}
     // 0,   1,   2
     // 4xx, 3xx, 2xx encoders
     for(int i = 0; i < 3; i++) {
@@ -82,6 +96,7 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
 
         switch (i) {
             // 4xx (dial lights)
+
             case 0: {
                 auto proportion = round(13 * normalized_value);
                 uint32_t integer_value = static_cast<uint32_t>(proportion);
@@ -96,19 +111,19 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
                 uint32_t integer_value = static_cast<uint32_t>(proportion);
                 if (m_encoders.encoders[i].value == encoder.Encoders[i].value) { break; }
                 m_encoders.encoders[i].value = encoder.Encoders[i].value;
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange);
+                if (duration.count() < 500) { break; }
                 g_xtouch->SetMeterLevel(PHYSICAL_CHANNEL_ID - 1, integer_value);
                 break;
+
+
 
             }
             // 2xx (fader)
             case 2: {
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange);
-                if (duration.count() < 500) { break; }
                 auto fractional_value = 16380 * normalized_value;
                 if (m_encoders.encoders[i].value == fractional_value) { break;  }
                 m_encoders.encoders[i].value = fractional_value;
-
-
                 g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, fractional_value);
                 break;
             }
