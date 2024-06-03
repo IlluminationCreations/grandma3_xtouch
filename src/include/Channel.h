@@ -28,6 +28,7 @@ private:
     MaUDPServer *m_maServer;
     bool m_toggle = false;
     void UpdateDial(int value);
+    std::chrono::time_point<std::chrono::system_clock> m_lastPhysicalChange;
 
 public:
     Channel(uint32_t id);
