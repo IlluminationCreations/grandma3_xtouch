@@ -110,6 +110,7 @@ void ChannelGroup::UpdateWatchList() {
 
 void ChannelGroup::ChangePage(int32_t pageOffset) {
     assert(pageOffset == -1 || pageOffset == 1);
+    m_sequence = m_sequence + 1;
 
     uint32_t cur_page = m_page->Get();
     if (pageOffset == -1 && cur_page > 1) { m_page->Set(cur_page - 1);;} 
@@ -141,6 +142,7 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
 void ChannelGroup::ScrollPage(int32_t scrollOffset) {
     assert(scrollOffset == -1 || scrollOffset == 1);
     assert(m_channelWindows.size() > 0 && "Channel windows not generated");
+    m_sequence = m_sequence + 1;
 
     uint32_t original_offset = m_channelOffset;
     if (scrollOffset == -1 && m_channelOffset > 0) { m_channelOffset--;}
@@ -295,11 +297,10 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
     using namespace std::chrono;
 
     if (!m_maServer) {return true;}
-    uint32_t seq = 0;
 
     IPC::IPCHeader header;
     header.type = IPC::PacketType::REQ_ENCODERS;
-    header.seq = seq;
+    header.seq = m_sequence;
     IPC::PlaybackRefresh::Request request;
     auto channels = CurrentChannelAddress();
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
@@ -321,12 +322,19 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
     if (resp_header->type != IPC::PacketType::RESP_ENCODERS) {
         return false;
     }
-    if (resp_header->seq != seq) {
-        return false;
-    }
+
     IPC::PlaybackRefresh::ChannelMetadata resp_metadata;
     memcpy(&resp_metadata, buffer + sizeof(IPC::IPCHeader), sizeof(IPC::PlaybackRefresh::ChannelMetadata));
     UpdateMasterFader(resp_metadata.master);
+
+    if (resp_header->seq != m_sequence) {
+        for(int i = 0; i < 8; i++) {
+            // Empty receive buffer
+            if(resp_metadata.channelActive[i]) {
+                m_maServer->Read(buffer, 4096);
+            }
+        }
+    }
 
     IPC::PlaybackRefresh::Data *data = (IPC::PlaybackRefresh::Data*)(buffer);
     for(int i = 0; i < 8; i++) {

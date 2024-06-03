@@ -74,7 +74,6 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
 
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange);
                 if (duration.count() < 500) { break; }
-                printf("Setting fader level to %f\n", fractional_value);
                 g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, fractional_value);
                 break;
             }

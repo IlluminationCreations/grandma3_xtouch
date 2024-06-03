@@ -37,6 +37,7 @@ public:
     uint32_t m_channelOffset = 0; // Offset is relative based on number of channels pinned
     uint32_t m_channelOffsetEnd = 0; // Final m_channelWindows index
     float m_masterFader = 0.0f;
+    uint32_t m_sequence = 0;
 
 
 private:
