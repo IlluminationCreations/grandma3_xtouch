@@ -48,8 +48,9 @@ void ChannelGroup::UpdateMasterFader(float unnormalized_value) {
     auto fractional_value = 16380 * normalized_value;
 
     if (m_masterFader == fractional_value) { return; }
-
     m_masterFader = fractional_value;
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastMasterFaderUpdate);
+
     g_xtouch->SetFaderLevel(8, fractional_value);
 }
 
@@ -271,6 +272,8 @@ ChannelGroup::ChannelGroup() {
     GenerateChannelWindows();
     m_playbackRefresh = std::thread(&ChannelGroup::RefreshPlaybacks, this);
     m_playbackRefresh.detach();
+
+    m_lastMasterFaderUpdate = clock::now();
 }
 
 void ChannelGroup::RegisterMAOutCB(std::function<void(char*, uint32_t)> requestCb) {
@@ -373,4 +376,6 @@ void ChannelGroup::UpdateMasterEncoder(int value) {
     memcpy(buffer + sizeof(IPC::IPCHeader), &packet, sizeof(IPC::EncoderUpdate::Data));
     m_maServer->Send(buffer, packet_size);
     free(buffer);
+
+    m_lastMasterFaderUpdate = clock::now();
 }
