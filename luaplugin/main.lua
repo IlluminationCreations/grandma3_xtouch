@@ -230,10 +230,12 @@ end
 ----------------------------------------------
 -- User code --
 ----------------------------------------------
-local TYPE_REQ_ENCODERS = 1
-local TYPE_RESP_ENCODERS = 2
-local TYPE_UPDATE_MA_ENCODER = 3
-local TYPE_UPDATE_MA_MASTER = 4
+local TYPE_REQ_ENCODERS = 0x8000
+local TYPE_RESP_ENCODERS = 0x8001
+local TYPE_UPDATE_MA_ENCODER = 0x8002
+local TYPE_UPDATE_MA_MASTER = 0x8003
+local TYPE_PRESS_MA_KEY = 0x8004
+local TYPE_END = 0x8005
 local function ExtractEncoderRequest(conn)
 	-- IPC_STRUCT {
 	-- 	unsigned int page;
@@ -298,7 +300,7 @@ local function SendEncoderHeader(connection, arrbEncoderActive, seq)
 	for k, v in ipairs(arrbEncoderActive) do
 		packet_data = packet_data .. pack("<B", v)
 	end
-	connection.conn:sendto(packet_data, connection.ip, connection.port)
+	SendPacket(connection, packet_data)
 end
 
 local function SendEncoderData(connection, encoderObj)
@@ -341,7 +343,7 @@ local function SendEncoderData(connection, encoderObj)
 		end
 	end
 
-	connection.conn:sendto(packet_data, connection.ip, connection.port)
+	SendPacket(connection, packet_data)
 end
 
 local function REQ_ENCODERS(connection, seq)
@@ -428,6 +430,10 @@ local function HandleConnection(socket, ip, port, data)
 	}
 	pkt_type, seq = stream:read("<II")
 	-- Handlers
+	assert(
+		pkt_type >= TYPE_REQ_ENCODERS and pkt_type < TYPE_END,
+		"Invalid packet type"
+	)
 	if pkt_type == TYPE_REQ_ENCODERS then
 		REQ_ENCODERS(connection, seq)
 	elseif pkt_type == TYPE_UPDATE_MA_ENCODER then
@@ -454,6 +460,11 @@ local function BeginListening()
 			coroutine.yield(0)
 		end
 	end
+end
+
+function SendPacket(connection_object, packet_data)
+	Printf("Sending data")
+	connection_object.conn:sendto(packet_data, connection_object.ip, connection_object.port)
 end
 
 return BeginListening

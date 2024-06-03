@@ -4,7 +4,15 @@
 
 namespace IPC {
     namespace PacketType {
-        enum Type {UNKNOWN, REQ_ENCODERS, RESP_ENCODERS, UPDATE_MA_ENCODER, UPDATE_MA_MASTER, PRESS_MA_KEY};
+        enum Type 
+        {
+            REQ_ENCODERS = 0x8000, 
+            RESP_ENCODERS = 0x8001, 
+            UPDATE_MA_ENCODER = 0x8002, 
+            UPDATE_MA_MASTER = 0x8003,
+            PRESS_MA_KEY = 0x8004,
+            END = 0x8005,
+        };
     }
 
     IPC_STRUCT IPCHeader {
