@@ -357,8 +357,8 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
     return true;
 }
 
-void ChannelGroup::UpdateEncoderFromXT(uint32_t physical_channel_id, int value) {
-    m_channels[physical_channel_id].UpdateEncoderFromXT(value);
+void ChannelGroup::UpdateEncoderFromXT(uint32_t physical_channel_id, int value, bool isFader) {
+    m_channels[physical_channel_id].UpdateEncoderFromXT(value, isFader);
 }
 
 void ChannelGroup::UpdateMasterEncoder(int value) {

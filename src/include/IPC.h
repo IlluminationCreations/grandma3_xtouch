@@ -42,7 +42,7 @@ namespace IPC {
         IPC_STRUCT Data {
             uint16_t page;
             uint8_t channel; // eg x01, x02, x03
-            uint8_t encoderType; // 400, 300, 200, 100
+            uint16_t encoderType; // 400, 300, 200, 100
             float value;
         };
 

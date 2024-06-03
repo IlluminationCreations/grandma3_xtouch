@@ -39,14 +39,14 @@ XTouchController::XTouchController() {
     });
     g_xtouch->RegisterDialCallback([&](unsigned char button, int attr)
     {
-        // auto base_address = button - 16; // 16 is the first dial
-        // assert(base_address >= 0 && base_address < PHYSICAL_CHANNEL_COUNT);
-        // UpdateMaEncoder(button, attr);
+        auto base_address = button - 16; // 16 is the first dial
+        assert(base_address >= 0 && base_address < PHYSICAL_CHANNEL_COUNT);
+        m_group.UpdateEncoderFromXT(base_address, attr, false);
     });
     g_xtouch->RegisterFaderCallback([&](unsigned char button, int attr)
     {
         assert(button >= 0 && button <= PHYSICAL_CHANNEL_COUNT);
-        if (button < 8) { m_group.UpdateEncoderFromXT(button, attr);}
+        if (button < 8) { m_group.UpdateEncoderFromXT(button, attr, true);}
         else { m_group.UpdateMasterEncoder(attr); }
     });
     // g_xtouch->RegisterFaderStateCallback([&](unsigned char fader, int attr)

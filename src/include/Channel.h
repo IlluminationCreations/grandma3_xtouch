@@ -14,6 +14,7 @@ private:
     using clock = std::chrono::high_resolution_clock;
     using time_point = std::chrono::time_point<clock>;
     struct EncoderColumn {
+        // 0 = 4xx, 1 = 3xx, 2 = 2xx
         struct {
             bool active;
             std::string name;
@@ -28,11 +29,13 @@ private:
     EncoderColumn m_encoders;
     MaUDPServer *m_maServer;
     time_point m_lastPhysicalChange;
+    bool m_toggle = false;
+    void UpdateDial(int value);
 
 public:
     Channel(uint32_t id);
     // Updates internal value, and sends data to GrandMA3
-    void UpdateEncoderFromXT(int value);
+    void UpdateEncoderFromXT(int value, bool isFader);
     // Updates value and fader based on GrandMA3 state
     void UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder);
     void Pin(bool state);

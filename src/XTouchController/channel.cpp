@@ -8,8 +8,12 @@ void Channel::Disable() {
     g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, 0);
 }
 
-void Channel::UpdateEncoderFromXT(int value) {
+void Channel::UpdateEncoderFromXT(int value, bool isFader) {
      if (!m_maServer) {return;}
+     if (!isFader) {
+         UpdateDial(value);
+         return;
+     }
 
     auto address = m_address->Get();
     auto normalized_value = value / 16380.0f; // 0.0f - 1.0f
@@ -34,6 +38,36 @@ void Channel::UpdateEncoderFromXT(int value) {
     m_lastPhysicalChange = std::chrono::system_clock::now();
 }
 
+void Channel::UpdateDial(int value) {
+     if (!m_maServer) {return;}
+    auto address = m_address->Get();
+    // 0 = 4xx, 1 = 3xx
+    auto &enc = m_toggle ? m_encoders.encoders[1] : m_encoders.encoders[0]; 
+    auto current_value = enc.value;
+
+    auto scaled_value = current_value + (1.0f * value); // Value is "relative" from XT (eg (-3,3))
+    auto top = fmax(scaled_value, 0.0f);
+    auto bottom = fmin(top, 100.0f);
+    enc.value = bottom;
+
+    IPC::IPCHeader header;
+    header.type = IPC::PacketType::UPDATE_MA_ENCODER;
+    header.seq = 0; // TODO: Implement sequence number
+
+    IPC::EncoderUpdate::Data packet;
+    packet.channel = address.subAddress;
+    packet.page = address.mainAddress;
+    packet.value = bottom;
+    packet.encoderType = m_toggle ? 300 : 400; 
+
+    auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::EncoderUpdate::Data);
+    char *buffer = (char*)malloc(packet_size);
+    memcpy(buffer, &header, sizeof(IPC::IPCHeader));
+    memcpy(buffer + sizeof(IPC::IPCHeader), &packet, sizeof(IPC::EncoderUpdate::Data));
+    m_maServer->Send(buffer, packet_size);
+    free(buffer);
+}
+
 void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
     auto address = m_address->Get();
     ASSERT_EQ_INT(address.mainAddress, encoder.page);
@@ -51,8 +85,8 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
             case 0: {
                 auto proportion = round(13 * normalized_value);
                 uint32_t integer_value = static_cast<uint32_t>(proportion);
-                if (m_encoders.encoders[i].value == integer_value) { break; }
-                m_encoders.encoders[i].value = integer_value;
+                if (m_encoders.encoders[i].value == encoder.Encoders[i].value) { break; }
+                m_encoders.encoders[i].value = encoder.Encoders[i].value;
                 g_xtouch->SetDialLevel(PHYSICAL_CHANNEL_ID - 1, integer_value);
                 break;
             }
@@ -60,8 +94,8 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
             case 1: {
                 auto proportion = round(9 * normalized_value);
                 uint32_t integer_value = static_cast<uint32_t>(proportion);
-                if (m_encoders.encoders[i].value == integer_value) { break; }
-                m_encoders.encoders[i].value = integer_value;
+                if (m_encoders.encoders[i].value == encoder.Encoders[i].value) { break; }
+                m_encoders.encoders[i].value = encoder.Encoders[i].value;
                 g_xtouch->SetMeterLevel(PHYSICAL_CHANNEL_ID - 1, integer_value);
                 break;
 

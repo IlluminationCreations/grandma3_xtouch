@@ -31,7 +31,7 @@ public:
     void HandleDialUpdate(char button, int value);
     void HandleButtonPress(char button, bool down);
 
-    void UpdateEncoderFromXT(uint32_t physical_channel_id, int value);
+    void UpdateEncoderFromXT(uint32_t physical_channel_id, int value, bool isFader);
     void UpdateMasterEncoder(int value);
 
     bool m_pinConfigMode = false;
