@@ -44,13 +44,14 @@ void ChannelGroup::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, uint3
 }
 
 void ChannelGroup::UpdateMasterFader(float unnormalized_value) {
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastMasterFaderUpdate);
+    if (duration.count() < 500) { return; }
+
     auto normalized_value = unnormalized_value / 100.0f;
     auto fractional_value = 16380 * normalized_value;
-
     if (m_masterFader == fractional_value) { return; }
+    
     m_masterFader = fractional_value;
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastMasterFaderUpdate);
-
     g_xtouch->SetFaderLevel(8, fractional_value);
 }
 

@@ -68,12 +68,13 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
             }
             // 2xx (fader)
             case 2: {
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange);
+                if (duration.count() < 500) { break; }
                 auto fractional_value = 16380 * normalized_value;
                 if (m_encoders.encoders[i].value == fractional_value) { break;  }
                 m_encoders.encoders[i].value = fractional_value;
 
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange);
-                if (duration.count() < 500) { break; }
+
                 g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, fractional_value);
                 break;
             }
