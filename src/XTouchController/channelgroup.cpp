@@ -357,6 +357,28 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
     return true;
 }
 
+void ChannelGroup::HandleUpdate(UpdateType type, char button, int value) {
+    m_sequence = m_sequence + 1;
+    switch (type) {
+        case UpdateType::FADER: 
+        { 
+            UpdateEncoderFromXT(button, value, true);
+            break; 
+        }
+        case UpdateType::DIAL: 
+        { 
+            UpdateEncoderFromXT(button, value, false); 
+            break; 
+        }
+        case UpdateType::BUTTON: {  break; }
+        case UpdateType::MASTER: 
+        {  
+            UpdateMasterEncoder(value); 
+        }
+        default: { assert(false); }
+    }
+}
+
 void ChannelGroup::UpdateEncoderFromXT(uint32_t physical_channel_id, int value, bool isFader) {
     m_channels[physical_channel_id].UpdateEncoderFromXT(value, isFader);
 }

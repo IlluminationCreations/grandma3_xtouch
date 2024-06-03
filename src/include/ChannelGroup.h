@@ -10,6 +10,12 @@
 #include <delayed.h>
 #include <chrono>
 
+enum class UpdateType {
+    FADER,
+    DIAL,
+    BUTTON,
+    MASTER
+};
 
 class ChannelGroup {
 public:
@@ -27,6 +33,7 @@ public:
     void UpdateMasterFader(float value);
     void DisablePhysicalChannel(uint32_t channel);
 
+    void HandleUpdate(UpdateType type, char button, int value);
     void HandleFaderUpdate(char button, int value);
     void HandleDialUpdate(char button, int value);
     void HandleButtonPress(char button, bool down);
@@ -36,14 +43,12 @@ public:
 
     bool m_pinConfigMode = false;
     Observer<uint32_t> *m_page; // Concrete concept
+
     uint32_t m_channelOffset = 0; // Offset is relative based on number of channels pinned
     uint32_t m_channelOffsetEnd = 0; // Final m_channelWindows index
     float m_masterFader = 0.0f;
     time_point m_lastMasterFaderUpdate;
-
     uint32_t m_sequence = 0;
-
-
 
 private:
 
