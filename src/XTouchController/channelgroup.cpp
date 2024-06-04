@@ -323,7 +323,7 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
     m_masterFaderEncoder->SetValue(resp_metadata->master, false);
 
     if (resp_header->seq != m_sequence) {
-        printf("Sequence number mismatch - dropping\n");
+        // printf("Sequence number mismatch - dropping\n");
         return false;
     }
 
