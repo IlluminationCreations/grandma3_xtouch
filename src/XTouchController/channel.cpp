@@ -51,7 +51,6 @@ void Channel::UpdateDial(int value) {
         auto _pow = pow(abs(x), 1.2);
         auto result = (0.665 * _pow);
         result = negative ? -result : result;
-        printf("Result: %f - pow: %f - x: %d\n", result, _pow, x);
         return result;
     };
 

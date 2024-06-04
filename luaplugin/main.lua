@@ -230,12 +230,13 @@ end
 ----------------------------------------------
 -- User code --
 ----------------------------------------------
-local TYPE_REQ_ENCODERS = 0x8000
-local TYPE_RESP_ENCODERS = 0x8001
-local TYPE_UPDATE_MA_ENCODER = 0x8002
-local TYPE_UPDATE_MA_MASTER = 0x8003
-local TYPE_PRESS_MA_KEY = 0x8004
-local TYPE_END = 0x8005
+local REQ_ENCODERS = 0x8000
+local RESP_ENCODERS = 0x8001
+-- local UNUSED = 0x8002
+local UPDATE_MA_ENCODER = 0x8003
+local UPDATE_MA_MASTER = 0x8004
+local PRESS_MA_KEY = 0x8005
+local PACKET_TYPE_END = 0x8006
 local function ExtractEncoderRequest(conn)
 	-- IPC_STRUCT {
 	-- 	unsigned int page;
@@ -290,20 +291,7 @@ local function GetExecutersFromChannel(page, channel)
 	return bchActive, executerTable
 end
 
-local function SendEncoderHeader(connection, arrbEncoderActive, seq)
-	-- IPC_STRUCT {
-	-- 	unsigned int master; // Master fader
-	-- 	bool channelActive[8]; // True if channel/playback has any active encoders or keys
-	-- } EncoderHeader; // Followed by ChannelData packets
-
-	local packet_data = pack("<IIf", TYPE_RESP_ENCODERS, seq, Root().ShowData.Masters.Grand.Master:GetFader({})) 
-	for k, v in ipairs(arrbEncoderActive) do
-		packet_data = packet_data .. pack("<B", v)
-	end
-	SendPacket(connection, packet_data)
-end
-
-local function SendEncoderData(connection, encoderObj)
+local function PrepareEncoderData(connection, encoderObj)
 	-- struct ChannelData  {
 	-- 	uint16_t page;
 	-- 	uint8_t channel; // eg x01, x02, x03
@@ -343,10 +331,10 @@ local function SendEncoderData(connection, encoderObj)
 		end
 	end
 
-	SendPacket(connection, packet_data)
+	return packet_data
 end
 
-local function REQ_ENCODERS(connection, seq)
+local function HandleSendingEncoderData(connection, seq)
 	-- Collect all requests, and create a set of pages to request.
 	-- The later is to avoid loading the same page multiple times if 
 	-- the page is not valid.
@@ -387,25 +375,38 @@ local function REQ_ENCODERS(connection, seq)
 		::continue::
   	end
 
-	-- Next, we send an initial response that indicates how many channels are active, which will tell the client how many more packets to expect.
-	-- We also include the value of the grandmaster fader.
-	SendEncoderHeader(connection, arrbEncoderActive, seq)
+	-- ===========================================================
+	-- =================== IPC::IPCHeader ========================
+	-- ===========================================================
+	local packet_data = pack("<II", RESP_ENCODERS, seq) 
 
-	-- Finally, we send the actual encoder data
-	for k, v in ipairs(arrEncoders) do
-		SendEncoderData(connection, v)
+	-- ===========================================================
+	-- ========= IPC::PlaybackRefresh::ChannelMetadata ===========
+	-- ===========================================================
+	packet_data = packet_data .. pack("<f", Root().ShowData.Masters.Grand.Master:GetFader({}))
+	for k, v in ipairs(arrbEncoderActive) do
+		packet_data = packet_data .. pack("<B", v)
 	end
+
+	-- ===========================================================
+	-- =============== IPC::PlaybackRefresh::Data ================
+	-- ===========================================================
+	for k, v in ipairs(arrEncoders) do
+		packet_data = packet_data .. PrepareEncoderData(connection, v)
+	end
+	SendPacket(connection, packet_data)
 end
 
-local function UPDATE_MA_MASTER(connection, seq)
+local function HandleUpdatingLocalMasterEncoder(connection, seq)
 	local value = connection.stream:read("<f")
 	Root().ShowData.Masters.Grand.Master:SetFader({value=value})
+	coroutine.yield(0.1);
 end
 
-local function UPDATE_MA_ENCODER(connection, seq)
-	local page, channel, encoderType, value = connection.stream:read("<HBHf")
+local function HandleUpdatingLocalEncoder(connection, seq)
+	local _page, channel, encoderType, value = connection.stream:read("<HBHf")
 	encoderType = encoderType - 100 -- Convert to 0-based index, kinda confusing
-	local page = Root().ShowData.DataPools.Default.Pages:Ptr(page)
+	local page = Root().ShowData.DataPools.Default.Pages:Ptr(_page)
 	if not page then
 		Printf("Page not found")
 		return
@@ -415,7 +416,15 @@ local function UPDATE_MA_ENCODER(connection, seq)
 		Printf("Channel not found")
 		return
 	end
+	if _page == 1 and channel == 1 then
+		Printf("Updating fader with value: " .. tostring(value))
+	end
 	ch:SetFader({value=value})
+	coroutine.yield(0.05);
+	-- Printf("Page: " .. tostring(page) .. " Channel: " .. tostring(channel) .. " EncoderType: " .. tostring(encoderType) .. " Value: " .. tostring(value))
+	if _page == 1 and channel == 1 then
+		Printf("Fader value: " .. tostring(ch:GetFader({})))
+	end
 end
 
 local function HandleConnection(socket, ip, port, data)
@@ -431,19 +440,25 @@ local function HandleConnection(socket, ip, port, data)
 	pkt_type, seq = stream:read("<II")
 	-- Handlers
 	assert(
-		pkt_type >= TYPE_REQ_ENCODERS and pkt_type < TYPE_END,
+		pkt_type >= REQ_ENCODERS and pkt_type < PACKET_TYPE_END,
 		"Invalid packet type"
 	)
-	if pkt_type == TYPE_REQ_ENCODERS then
-		REQ_ENCODERS(connection, seq)
-	elseif pkt_type == TYPE_UPDATE_MA_ENCODER then
-		UPDATE_MA_ENCODER(connection, seq)
-	elseif pkt_type == TYPE_UPDATE_MA_MASTER then
-		UPDATE_MA_MASTER(connection, seq)
+	if pkt_type == REQ_ENCODERS then
+		HandleSendingEncoderData(connection, seq)
+	elseif pkt_type == UPDATE_MA_ENCODER then
+		HandleUpdatingLocalEncoder(connection, seq)
+	elseif pkt_type == UPDATE_MA_MASTER then
+		HandleUpdatingLocalMasterEncoder(connection, seq)
 	end
 end
 
+local function printmsg()
+	Printf("Change event")
+end
+
 local function BeginListening()
+	HookObjectChange(printmsg, Root().ShowData.DataPools.Default.Pages, my_handle:Parent())
+
 	local socket = require("socket")
 	local udp = assert(socket.udp4())
 	local port = 9000

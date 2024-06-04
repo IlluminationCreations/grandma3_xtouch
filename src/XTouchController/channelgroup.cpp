@@ -321,39 +321,33 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
         printf("Failed to read from MA server\n");
         return false;
     }
-    IPC::IPCHeader resp_header;
-    memcpy(&resp_header, buffer, sizeof(IPC::IPCHeader));
-    if (resp_header.type != IPC::PacketType::RESP_ENCODERS) {
+
+    // ----------------- Past this line we reuse the buffer -----------------
+    uint32_t offset = sizeof(IPC::IPCHeader);
+    IPC::IPCHeader *resp_header = (IPC::IPCHeader*)(buffer);
+    IPC::PlaybackRefresh::ChannelMetadata *resp_metadata = (IPC::PlaybackRefresh::ChannelMetadata*)(buffer + offset);
+    offset += sizeof(IPC::PlaybackRefresh::ChannelMetadata);
+    IPC::PlaybackRefresh::Data *data = (IPC::PlaybackRefresh::Data*)(buffer + offset);
+
+    if (resp_header->type != IPC::PacketType::RESP_ENCODERS_META) {
         return false;
     }
 
-    IPC::PlaybackRefresh::ChannelMetadata resp_metadata;
-    memcpy(&resp_metadata, buffer + sizeof(IPC::IPCHeader), sizeof(IPC::PlaybackRefresh::ChannelMetadata));
-    UpdateMasterFader(resp_metadata.master);
+    UpdateMasterFader(resp_metadata->master);
 
-    if (resp_header.seq != m_sequence) {
+    if (resp_header->seq != m_sequence) {
         printf("Sequence number mismatch - dropping\n");
-        for(int i = 0; i < 8; i++) {
-            // Empty receive buffer
-            if(resp_metadata.channelActive[i]) {
-                m_maServer->Read(buffer, 4096);
-            }
-        }
         return false;
     }
 
-    IPC::PlaybackRefresh::Data *data = (IPC::PlaybackRefresh::Data*)(buffer);
+    uint32_t data_iter = 0;
     for(int i = 0; i < 8; i++) {
-        if(!resp_metadata.channelActive[i]) {
+        if(!resp_metadata->channelActive[i]) {
             DisablePhysicalChannel(i);
             continue;
         }
-        if (m_maServer->Read(buffer, 4096) < 0) {
-            printf("Failed to read followup IPC::PlaybackRefresh::Data from MA server\n");
-            return false;
-        }
 
-        UpdateEncoderFromMA(*data, i);    
+        UpdateEncoderFromMA(data[data_iter++], i);    
     }
     free(buffer);
     return true;

@@ -7,11 +7,12 @@ namespace IPC {
         enum Type 
         {
             REQ_ENCODERS = 0x8000, 
-            RESP_ENCODERS = 0x8001, 
-            UPDATE_MA_ENCODER = 0x8002, 
-            UPDATE_MA_MASTER = 0x8003,
-            PRESS_MA_KEY = 0x8004,
-            END = 0x8005,
+            RESP_ENCODERS_META = 0x8001,
+            // UNUSED = 0x8002,
+            UPDATE_MA_ENCODER = 0x8003, 
+            UPDATE_MA_MASTER = 0x8004,
+            PRESS_MA_KEY = 0x8005,
+            END = 0x8006,
         };
     }
 
