@@ -42,8 +42,8 @@ void Channel::UpdateDial(int value) {
      if (!m_maServer) {return;}
     auto address = m_address->Get();
     // 0 = 4xx, 1 = 3xx
-    auto &enc = m_toggle ? m_encoders.encoders[1] : m_encoders.encoders[0]; 
-    auto current_value = enc.value;
+    auto &enc = m_toggle ? m_encoder[1] : m_encoder[0]; 
+    auto current_value = enc.GetValue();
 
 
     auto func = [](int x) -> float {
@@ -58,7 +58,7 @@ void Channel::UpdateDial(int value) {
     auto scaled_value = current_value + func(value); // Value is "relative" from XT (eg (-3,3))
     auto top = fmax(scaled_value, 0.0f);
     auto bottom = fmin(top, 100.0f);
-    enc.value = bottom;
+    enc.SetValue(bottom);
 
     IPC::IPCHeader header;
     header.type = IPC::PacketType::UPDATE_MA_ENCODER;
@@ -89,46 +89,7 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
     // 0,   1,   2
     // 4xx, 3xx, 2xx encoders
     for(int i = 0; i < 3; i++) {
-        // Guard Update name
-        // Guard Update value
-        auto normalized_value = encoder.Encoders[i].value / 100.0f; // 100.f -> (0.0f, 1.0f)
-
-        switch (i) {
-            // 4xx (dial lights)
-
-            case 0: {
-                auto proportion = round(13 * normalized_value);
-                uint32_t integer_value = static_cast<uint32_t>(proportion);
-                if (m_encoders.encoders[i].value == encoder.Encoders[i].value) { break; }
-                m_encoders.encoders[i].value = encoder.Encoders[i].value;
-                g_xtouch->SetDialLevel(PHYSICAL_CHANNEL_ID - 1, integer_value);
-                break;
-            }
-            // 3xx (sound meter lights)
-            case 1: {
-                auto proportion = round(9 * normalized_value);
-                uint32_t integer_value = static_cast<uint32_t>(proportion);
-                if (m_encoders.encoders[i].value == encoder.Encoders[i].value) { break; }
-                m_encoders.encoders[i].value = encoder.Encoders[i].value;
-                g_xtouch->SetMeterLevel(PHYSICAL_CHANNEL_ID - 1, integer_value);
-                break;
-
-
-
-            }
-            // 2xx (fader)
-            case 2: {
-                auto fractional_value = 16380 * normalized_value;
-                if (m_encoders.encoders[i].value == fractional_value) { break;  }
-                m_encoders.encoders[i].value = fractional_value;
-
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange); 
-                if (duration.count() < 500) { return;}
-                
-                g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, fractional_value);
-                break;
-            }
-        }    
+        m_encoder[i].SetValue(encoder.Encoders[i].value);   
     }
 }
 
@@ -154,6 +115,12 @@ Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
         g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad); // PHYSICAL_CHANNEL_ID is 1-indexed, scribble is 0-indexed
     });
     m_lastPhysicalChange = std::chrono::system_clock::now();
+
+
+    m_encoder = (Encoder*)(malloc(sizeof(Encoder) * 3));
+    for(int i = 0; i < 3; i++) {
+        auto channel = new (&m_encoder[i]) Encoder(static_cast<EncoderId>(i), PHYSICAL_CHANNEL_ID);
+    }
 }
 
 void Channel::UpdateScribbleAddress() {
@@ -178,4 +145,53 @@ bool Channel::IsPinned() {
 
 void Channel::RegisterMaSend(MaUDPServer *server) {
     m_maServer = server;
+}
+
+Encoder::Encoder(EncoderId type, uint32_t id): m_type(type), PHYSICAL_CHANNEL_ID(id) {}
+
+float Encoder::GetValue() {
+    return m_value;
+}
+void Encoder::SetValue(float value) {
+    if (m_value == value) { return; }
+    m_value = value;
+    switch (m_type) {
+        case EncoderId::Dial: 
+        {
+            auto proportion = round(13 * (value / 100.0f));
+            uint32_t integer_value = static_cast<uint32_t>(proportion);
+            g_xtouch->SetDialLevel(PHYSICAL_CHANNEL_ID - 1, integer_value);
+            break;
+        }
+        case EncoderId::SoundMeter: 
+        {
+            auto proportion = round(9 * (value / 100.0f));
+            uint32_t integer_value = static_cast<uint32_t>(proportion);
+            g_xtouch->SetMeterLevel(PHYSICAL_CHANNEL_ID - 1, integer_value);
+            break;
+        }
+        case EncoderId::Fader: 
+        {
+            auto fractional_value = 16380 * (value / 100.0f);
+            m_value = fractional_value;
+            printf("Setting fader level to %u\n", fractional_value);
+            printf("value: %f\n", value);
+            printf("m_value: %f\n", m_value);
+            // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange); 
+            // if (duration.count() < 500) { return;}
+            g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, fractional_value);
+            break;
+        }
+        default: 
+        {
+            assert(false);
+        }
+    }
+    m_value = value;
+}
+void Encoder::SetName(std::string name) {
+    m_name = name;
+}
+std::string Encoder::GetName() {
+    return m_name;
 }

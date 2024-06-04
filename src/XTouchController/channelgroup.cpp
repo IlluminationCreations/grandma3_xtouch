@@ -289,9 +289,7 @@ void ChannelGroup::HandleButtonPress(char button, bool down) {
 
 void ChannelGroup::RefreshPlaybacks() {
     while (true) {
-        if (!RefreshPlaybacksImpl()) {
-            printf("Failed to refresh playbacks\n");
-        };
+        RefreshPlaybacksImpl();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(25));
     }
@@ -334,6 +332,7 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
     UpdateMasterFader(resp_metadata.master);
 
     if (resp_header.seq != m_sequence) {
+        printf("Sequence number mismatch - dropping\n");
         for(int i = 0; i < 8; i++) {
             // Empty receive buffer
             if(resp_metadata.channelActive[i]) {
@@ -350,7 +349,7 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
             continue;
         }
         if (m_maServer->Read(buffer, 4096) < 0) {
-            printf("Failed to read from MA server\n");
+            printf("Failed to read followup IPC::PlaybackRefresh::Data from MA server\n");
             return false;
         }
 
@@ -361,7 +360,7 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
 }
 
 void ChannelGroup::HandleUpdate(UpdateType type, char button, int value) {
-    m_sequence = m_sequence + 1;
+    
     switch (type) {
         case UpdateType::FADER: 
         { 
@@ -381,6 +380,7 @@ void ChannelGroup::HandleUpdate(UpdateType type, char button, int value) {
         }
         default: { assert(false); }
     }
+    m_sequence = m_sequence + 1;
 }
 
 void ChannelGroup::UpdateEncoderFromXT(uint32_t physical_channel_id, int value, bool isFader) {

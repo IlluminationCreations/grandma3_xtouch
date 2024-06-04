@@ -9,22 +9,36 @@
 #include <maserver.h>
 #include <chrono>
 
+enum class EncoderId {
+    Dial,
+    SoundMeter,
+    Fader
+};
+
+class Encoder {
+private:
+    EncoderId m_type; 
+    float m_value;
+    bool m_active;
+    std::string m_name;
+    const uint32_t PHYSICAL_CHANNEL_ID;
+
+public:
+    Encoder(EncoderId type, uint32_t id);
+    float GetValue();
+    void SetValue(float v);
+    void SetName(std::string name);
+    std::string GetName();
+};
+
 class Channel {
 private:
-    struct EncoderColumn {
-        // 0 = 4xx, 1 = 3xx, 2 = 2xx
-        struct {
-            bool active;
-            std::string name;
-            float value;
-        } encoders[3]; // 4xx, 3xx, 2xx encoders
-        bool keysActive[4]; // 4xx, 3xx, 2xx, 1xx keys are being used
-    }; // Slimmed down version of IPC::PlaybackRefresh::Data
     void UpdateScribbleAddress();
 
     xt_ScribblePad_t m_scribblePad;
     bool m_pinned = false;
-    EncoderColumn m_encoders;
+    Encoder *m_encoder;
+    bool m_keysActive[4];
     MaUDPServer *m_maServer;
     bool m_toggle = false;
     void UpdateDial(int value);
