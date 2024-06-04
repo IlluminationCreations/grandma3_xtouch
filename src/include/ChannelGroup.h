@@ -30,7 +30,6 @@ public:
     void RegisterMaSend(MaUDPServer *server); // Temporary, will be removed after refactoring
     std::vector<Address> CurrentChannelAddress();
     void UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, uint32_t physical_channel_id);
-    void UpdateMasterFader(float value);
     void DisablePhysicalChannel(uint32_t channel);
 
     void HandleUpdate(UpdateType type, char button, int value);
@@ -47,7 +46,6 @@ public:
     uint32_t m_channelOffset = 0; // Offset is relative based on number of channels pinned
     uint32_t m_channelOffsetEnd = 0; // Final m_channelWindows index
     float m_masterFader = 0.0f;
-    time_point m_lastMasterFaderUpdate;
     uint32_t m_sequence = 0;
 
 private:
@@ -66,6 +64,7 @@ private:
 
     // "Other"
     Channel *m_channels;
+    Encoder *m_masterFaderEncoder;
     std::vector<std::vector<uint32_t>> m_channelWindows;
     std::thread m_playbackRefresh;
 };

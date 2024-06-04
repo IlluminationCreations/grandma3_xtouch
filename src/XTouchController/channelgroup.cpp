@@ -43,18 +43,6 @@ void ChannelGroup::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, uint3
     channel.UpdateEncoderFromMA(encoder);
 }
 
-void ChannelGroup::UpdateMasterFader(float unnormalized_value) {
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastMasterFaderUpdate);
-    if (duration.count() < 500) { return; }
-
-    auto normalized_value = unnormalized_value / 100.0f;
-    auto fractional_value = 16380 * normalized_value;
-    if (m_masterFader == fractional_value) { return; }
-    
-    m_masterFader = fractional_value;
-    g_xtouch->SetFaderLevel(8, fractional_value);
-}
-
 void ChannelGroup::UpdatePinnedChannels(xt_buttons button) {
     int selectBtnToChannel = ButtonUtils::SelectButtonToChannel(button);
     int muteBtnToChannel = ButtonUtils::MuteButtonToChannel(button);
@@ -265,6 +253,7 @@ ChannelGroup::ChannelGroup() {
     for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
         auto channel = new (&m_channels[i]) Channel(i + 1);
     }
+    m_masterFaderEncoder = new Encoder(EncoderId::Master, 0);
 
     m_page = new Observer<uint32_t>(1, [](uint32_t page) { 
         g_xtouch->SetAssignment(page);
@@ -273,8 +262,6 @@ ChannelGroup::ChannelGroup() {
     GenerateChannelWindows();
     m_playbackRefresh = std::thread(&ChannelGroup::RefreshPlaybacks, this);
     m_playbackRefresh.detach();
-
-    m_lastMasterFaderUpdate = clock::now();
 }
 
 void ChannelGroup::RegisterMAOutCB(std::function<void(char*, uint32_t)> requestCb) {
@@ -333,7 +320,7 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
         return false;
     }
 
-    UpdateMasterFader(resp_metadata->master);
+    m_masterFaderEncoder->SetValue(resp_metadata->master, false);
 
     if (resp_header->seq != m_sequence) {
         printf("Sequence number mismatch - dropping\n");
@@ -379,17 +366,19 @@ void ChannelGroup::HandleUpdate(UpdateType type, char button, int value) {
 
 void ChannelGroup::UpdateEncoderFromXT(uint32_t physical_channel_id, int value, bool isFader) {
     m_channels[physical_channel_id].UpdateEncoderFromXT(value, isFader);
+
 }
 
 void ChannelGroup::UpdateMasterEncoder(int value) {
     if (!m_maServer) {return;}
-    auto normalized_value = value / 16380.0f; // 0.0f - 1.0f
+    auto normalized_value = (value / 16380.0f) * 100.0f; // 0.0f - 100.0f
+    m_masterFaderEncoder->SetValue(normalized_value, true);
 
     IPC::IPCHeader header;
     header.type = IPC::PacketType::UPDATE_MA_MASTER;
     header.seq = 0; // TODO: Implement sequence number
     IPC::EncoderUpdate::MasterData packet;
-    packet.value = normalized_value * 100.0f;
+    packet.value = normalized_value;
 
     auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::EncoderUpdate::Data);
     char *buffer = (char*)malloc(packet_size);
@@ -397,6 +386,4 @@ void ChannelGroup::UpdateMasterEncoder(int value) {
     memcpy(buffer + sizeof(IPC::IPCHeader), &packet, sizeof(IPC::EncoderUpdate::Data));
     m_maServer->Send(buffer, packet_size);
     free(buffer);
-
-    m_lastMasterFaderUpdate = clock::now();
 }

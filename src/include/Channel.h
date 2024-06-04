@@ -12,21 +12,27 @@
 enum class EncoderId {
     Dial,
     SoundMeter,
-    Fader
+    Fader,
+    Master // Special case for master fader, only contained in ChannelGroup
 };
 
 class Encoder {
 private:
+    using clock = std::chrono::system_clock;
+    using time_point = std::chrono::time_point<clock>;
+
     EncoderId m_type; 
     float m_value;
     bool m_active;
     std::string m_name;
     const uint32_t PHYSICAL_CHANNEL_ID;
+    time_point m_lastPhysicalChange;
+    uint32_t m_delayTime;
 
 public:
     Encoder(EncoderId type, uint32_t id);
     float GetValue();
-    void SetValue(float v);
+    void SetValue(float value, bool physical);
     void SetName(std::string name);
     std::string GetName();
 };

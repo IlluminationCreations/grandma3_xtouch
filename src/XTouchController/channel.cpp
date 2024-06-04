@@ -14,9 +14,11 @@ void Channel::UpdateEncoderFromXT(int value, bool isFader) {
          UpdateDial(value);
          return;
      }
+    auto &enc = m_encoder[2]; // Fader
 
     auto address = m_address->Get();
-    auto normalized_value = value / 16380.0f; // 0.0f - 1.0f
+    auto normalized_value = (value / 16380.0f) * 100.0f; // 0.0f - 100.0f
+    enc.SetValue(normalized_value, true);
 
     IPC::IPCHeader header;
     header.type = IPC::PacketType::UPDATE_MA_ENCODER;
@@ -25,7 +27,7 @@ void Channel::UpdateEncoderFromXT(int value, bool isFader) {
     IPC::EncoderUpdate::Data packet;
     packet.channel = address.subAddress;
     packet.page = address.mainAddress;
-    packet.value = normalized_value * 100.0f;
+    packet.value = normalized_value;
     packet.encoderType = 200; // Fader
 
     auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::EncoderUpdate::Data);
@@ -57,7 +59,7 @@ void Channel::UpdateDial(int value) {
     auto scaled_value = current_value + func(value); // Value is "relative" from XT (eg (-3,3))
     auto top = fmax(scaled_value, 0.0f);
     auto bottom = fmin(top, 100.0f);
-    enc.SetValue(bottom);
+    enc.SetValue(bottom, true);
 
     IPC::IPCHeader header;
     header.type = IPC::PacketType::UPDATE_MA_ENCODER;
@@ -88,7 +90,7 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
     // 0,   1,   2
     // 4xx, 3xx, 2xx encoders
     for(int i = 0; i < 3; i++) {
-        m_encoder[i].SetValue(encoder.Encoders[i].value);   
+        m_encoder[i].SetValue(encoder.Encoders[i].value, false);   
     }
 }
 
@@ -146,12 +148,30 @@ void Channel::RegisterMaSend(MaUDPServer *server) {
     m_maServer = server;
 }
 
-Encoder::Encoder(EncoderId type, uint32_t id): m_type(type), PHYSICAL_CHANNEL_ID(id) {}
+Encoder::Encoder(EncoderId type, uint32_t id): m_type(type), PHYSICAL_CHANNEL_ID(id) {
+    m_lastPhysicalChange = std::chrono::system_clock::now(); // Initialize to now
+    if (type == EncoderId::Fader || type == EncoderId::Master) {
+        m_delayTime = 500;
+    } else {
+        m_delayTime = 50;
+    }
+}
 
 float Encoder::GetValue() {
     return m_value;
 }
-void Encoder::SetValue(float value) {
+void Encoder::SetValue(float value, bool physical) {
+    if (!physical)
+    { 
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange); 
+        if (duration.count() < m_delayTime ) { return; }
+    } 
+    else 
+    {
+        m_lastPhysicalChange = std::chrono::system_clock::now();
+    }
+
+
     if (m_value == value) { return; }
     m_value = value;
     switch (m_type) {
@@ -171,14 +191,18 @@ void Encoder::SetValue(float value) {
         }
         case EncoderId::Fader: 
         {
+            if (physical) { break; } // Don't need to update fader when it's physical
             auto fractional_value = 16380 * (value / 100.0f);
             m_value = fractional_value;
-            printf("Setting fader level to %u\n", fractional_value);
-            printf("value: %f\n", value);
-            printf("m_value: %f\n", m_value);
-            // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - m_lastPhysicalChange); 
-            // if (duration.count() < 500) { return;}
             g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, fractional_value);
+            break;
+        }
+        case EncoderId::Master: 
+        {
+            if (physical) { break; } // Don't need to update fader when it's physical
+            auto fractional_value = 16380 * (value / 100.0f);
+            m_value = fractional_value;
+            g_xtouch->SetFaderLevel(8, fractional_value);
             break;
         }
         default: 
