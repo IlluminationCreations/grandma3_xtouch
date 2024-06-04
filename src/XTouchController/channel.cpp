@@ -150,6 +150,13 @@ void Channel::RegisterMaSend(MaUDPServer *server) {
 
 Encoder::Encoder(EncoderId type, uint32_t id): m_type(type), PHYSICAL_CHANNEL_ID(id) {
     m_lastPhysicalChange = std::chrono::system_clock::now(); // Initialize to now
+
+    // Spent a lot of time trying to figure out why there was stuttering on the dials
+    // The 'stuttering' led to the dial, when being turned, would periodically 'jump' back to the previous value
+    // After much diagnosis, the issue is that when calling SetFader in GrandMA, the value is updated for the next DMX packet
+    // This means that the value is not immediately updated, and a request for encoder states would return the current value, not the updated value
+    // This was confirmed by printing the update value before calling SetFader, then printing the output of GetFader({}).
+    // The result was that the value was not updated, and the value was the same as the previous value.
     if (type == EncoderId::Fader || type == EncoderId::Master) {
         m_delayTime = 500;
     } else {
