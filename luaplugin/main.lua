@@ -400,7 +400,6 @@ end
 local function HandleUpdatingLocalMasterEncoder(connection, seq)
 	local value = connection.stream:read("<f")
 	Root().ShowData.Masters.Grand.Master:SetFader({value=value})
-	coroutine.yield(0.1);
 end
 
 local function HandleUpdatingLocalEncoder(connection, seq)
@@ -420,7 +419,6 @@ local function HandleUpdatingLocalEncoder(connection, seq)
 		Printf("Updating fader with value: " .. tostring(value))
 	end
 	ch:SetFader({value=value})
-	coroutine.yield(0.05);
 	-- Printf("Page: " .. tostring(page) .. " Channel: " .. tostring(channel) .. " EncoderType: " .. tostring(encoderType) .. " Value: " .. tostring(value))
 	if _page == 1 and channel == 1 then
 		Printf("Fader value: " .. tostring(ch:GetFader({})))
