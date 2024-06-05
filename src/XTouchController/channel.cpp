@@ -111,6 +111,21 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
         }
 
     }
+
+    // Here we light up or turn off buttons on the X-Touch based on if a "channel"
+    // has a key active for that encoder. REC, SOLO, MUTE, SELECT represents keys 4xx, 3xx, 2xx, 1xx respectively
+    auto distance = FADER_1_MUTE - FADER_0_MUTE;
+    uint8_t offsets[4] = {0, 8, 16, 24}; // REC, SOLO, MUTE, SELECT FADER_0_* offsets 
+    auto FADER = PHYSICAL_CHANNEL_ID - 1;
+
+    for(int i = 0; i < 4; i++) {
+        if (m_keysActive[i] == encoder.keysActive[i]) { continue; }
+        m_keysActive[i] = encoder.keysActive[i];
+        xt_button_state_t state = encoder.keysActive[i] ? xt_button_state_t::ON : xt_button_state_t::OFF;
+
+        g_xtouch->SetSingleButton(offsets[i] + (FADER * distance), state);
+
+    }
 }
 
 Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
