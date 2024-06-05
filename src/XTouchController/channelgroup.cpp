@@ -269,8 +269,15 @@ void ChannelGroup::RegisterMAOutCB(std::function<void(char*, uint32_t)> requestC
 }
 
 void ChannelGroup::HandleButtonPress(char button, bool down) {
+    printf("Button %u hit, state = %u\n", button, down);
     xt_alias_btn btnAlias = static_cast<xt_alias_btn>(button); 
      if (ButtonUtils::AddressChangingButton(static_cast<xt_buttons>(button))) {  HandleAddressChange(btnAlias); return; }
+     if (button >= FADER_0_DIAL_PRESS && button <= FADER_7_DIAL_PRESS) 
+     { 
+        printf("Toggling channel %u\n", button - FADER_0_DIAL_PRESS); // (button - FADER_0_SELECT
+        auto i = button - FADER_0_DIAL_PRESS;
+        m_channels[i].Toggle();
+     }
 }
 
 

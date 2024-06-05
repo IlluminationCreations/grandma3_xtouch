@@ -98,11 +98,12 @@ void XTouchController::SpawnServer(SpawnType type) {
 }
 
 bool XTouchController::HandleButton(xt_buttons btn, bool down) {
-    if (!down) { return true; } // No special handling for button down, yet. Only button up.
+    if (down) { return true; } // No special handling for button down, yet. Only button up.
 
     xt_alias_btn btnAlias = static_cast<xt_alias_btn>(btn);
     if (m_group.m_pinConfigMode || btnAlias == xt_alias_btn::PIN) { m_group.UpdatePinnedChannels(btn); return true; }
     if (ButtonUtils::AddressChangingButton(btn)) {  m_group.HandleButtonPress(btnAlias, down); return true;}
+    if (btn >= FADER_0_DIAL_PRESS && btn <= FADER_7_DIAL_PRESS) { m_group.HandleButtonPress(btn, down); return true; }
     return false;
 }
 

@@ -60,6 +60,7 @@ public:
     bool IsPinned();
     void Disable();
     void RegisterMaSend(MaUDPServer *server);
+    void Toggle();
 
     const uint32_t PHYSICAL_CHANNEL_ID;
     Observer<Address> *m_address; // Virtual address / represents channel within MA

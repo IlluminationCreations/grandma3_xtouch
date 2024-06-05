@@ -70,6 +70,7 @@ void Channel::UpdateDial(int value) {
     packet.page = address.mainAddress;
     packet.value = bottom;
     packet.encoderType = m_toggle ? 300 : 400; 
+    printf("packet.encoderType = %u\n", packet.encoderType);
 
     auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::EncoderUpdate::Data);
     char *buffer = (char*)malloc(packet_size);
@@ -218,6 +219,9 @@ void Encoder::SetValue(float value, bool physical) {
         }
     }
     m_value = value;
+}
+void Channel::Toggle() {
+    m_toggle = !m_toggle;
 }
 void Encoder::SetName(std::string name) {
     m_name = name;
