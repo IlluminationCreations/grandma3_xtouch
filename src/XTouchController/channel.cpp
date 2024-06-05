@@ -70,7 +70,6 @@ void Channel::UpdateDial(int value) {
     packet.page = address.mainAddress;
     packet.value = bottom;
     packet.encoderType = m_toggle ? 300 : 400; 
-    printf("packet.encoderType = %u\n", packet.encoderType);
 
     auto packet_size = sizeof(IPC::IPCHeader) + sizeof(IPC::EncoderUpdate::Data);
     char *buffer = (char*)malloc(packet_size);
@@ -242,7 +241,6 @@ void Encoder::SetValue(float value, bool physical) {
 void Channel::Toggle() {
     // We don't need to toggle if an alternative encoder is not active
     if (!m_encoder[0].IsActive() || !m_encoder[1].IsActive()) { return; } 
-    printf("Toggling\n");
     m_toggle = !m_toggle;
     std::string text;
     if (!m_toggle) { // 400 text
