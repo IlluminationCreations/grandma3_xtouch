@@ -177,6 +177,7 @@ Encoder::Encoder(EncoderId type, uint32_t id): m_type(type), PHYSICAL_CHANNEL_ID
     // This means that the value is not immediately updated, and a request for encoder states would return the current value, not the updated value
     // This was confirmed by printing the update value before calling SetFader, then printing the output of GetFader({}).
     // The result was that the value was not updated, and the value was the same as the previous value.
+    // Confirmed others have observed this: https://forum.malighting.com/forum/thread/9009-thread-timing-issues-when-setting-reading-fader-value/?postID=22948#post22948
     if (type == EncoderId::Fader || type == EncoderId::Master) {
         m_delayTime = 500;
     } else {
