@@ -3,18 +3,18 @@
 
 template<typename T>
 class Observer {
-    T m_page;
+    T stored_value;
     std::function<void(T)> m_updateCb;
 public:
-    Observer(T page, std::function<void(T)> updateCb) {
+    Observer(T value, std::function<void(T)> updateCb) {
         m_updateCb = updateCb;
-        Set(page);
+        Set(value);
     }
     T Get() {
-        return m_page;
+        return stored_value;
     }
-    void Set(T page) {
-        m_page = page;
-        m_updateCb(m_page);
+    void Set(T value) {
+        stored_value = value;
+        m_updateCb(value);
     }
 };

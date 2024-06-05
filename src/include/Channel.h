@@ -41,8 +41,6 @@ public:
 
 class Channel {
 private:
-    void UpdateScribbleAddress();
-
     xt_ScribblePad_t m_scribblePad;
     bool m_pinned = false;
     bool m_firstUpdateReceived = false;
@@ -52,6 +50,8 @@ private:
     bool m_toggle = false;
     void UpdateDial(int value);
     std::chrono::time_point<std::chrono::system_clock> m_lastPhysicalChange;
+    Observer<xt_colours_t> *m_scribbleColour;
+    Observer<std::string> *m_scribbleBottomText;
 
 public:
     Channel(uint32_t id);

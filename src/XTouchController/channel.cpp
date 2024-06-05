@@ -3,8 +3,12 @@
 #include <string.h>
 
 void Channel::Disable() {
-    m_scribblePad.Colour = xt_colours_t::RED;
-    g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
+    // We want to show a different colour if the channel does not exist (eg past the last possible channel)
+    auto address = m_address->Get();
+    if (address.subAddress == UINT32_MAX) { return; } 
+
+    m_scribbleColour->Set(xt_colours_t::RED);
+    m_scribbleBottomText->Set("None");
     g_xtouch->SetFaderLevel(PHYSICAL_CHANNEL_ID - 1, 0);
 }
 
@@ -96,18 +100,14 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
         // Code below is for encoders 4xx and 3xx       
         if (i == 3) { continue; }
 
-        bool nameWasSet = m_encoder[i].SetName(encoder.Encoders[i].key_name);
-        if (!nameWasSet) { continue; } // If the name was not set, don't update the scribble pad
+        m_encoder[i].SetName(encoder.Encoders[i].key_name);
         if (m_toggle && i == 1) // m_toggle means we're displaying the 3xx encoder
         {
-
-            snprintf(m_scribblePad.BotText, 8, "%s", encoder.Encoders[1].key_name);
-            g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
+            m_scribbleBottomText->Set(encoder.Encoders[1].key_name);
         }
         else if (!m_toggle && i == 0) 
         {
-            snprintf(m_scribblePad.BotText, 8, "%s", encoder.Encoders[0].key_name);
-            g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
+            m_scribbleBottomText->Set(encoder.Encoders[0].key_name);
         }
 
     }
@@ -121,17 +121,23 @@ Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
         .Colour = xt_colours_t::WHITE,
         .Inverted = 1
     };
+    m_scribbleBottomText = new Observer<std::string>("", [&](std::string text) {
+        snprintf(m_scribblePad.BotText, 8, "%s", text.c_str());
+        g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
+    });
+    m_scribbleColour = new Observer<xt_colours_t>(xt_colours_t::BLACK, [&](xt_colours_t colour) {
+        m_scribblePad.Colour = colour;
+        g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
+    });
     m_address = new Observer<Address>({1, id}, [&](Address address) {
         if (address.subAddress == UINT32_MAX) {
-            m_scribblePad.Colour = xt_colours_t::BLACK;
             snprintf(m_scribblePad.TopText, 8, "----");
-            snprintf(m_scribblePad.BotText, 8, "----");
-            g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad); // PHYSICAL_CHANNEL_ID is 1-indexed, scribble is 0-indexed
+            m_scribbleBottomText->Set("");
+            m_scribbleColour->Set(xt_colours_t::BLACK);
             return;
         }
         m_scribblePad.Colour = xt_colours_t::WHITE;
         snprintf(m_scribblePad.TopText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
-        // snprintf(m_scribblePad.BotText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
         g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad); // PHYSICAL_CHANNEL_ID is 1-indexed, scribble is 0-indexed
     });
     m_lastPhysicalChange = std::chrono::system_clock::now();
@@ -143,20 +149,15 @@ Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
     }
 }
 
-void Channel::UpdateScribbleAddress() {
-    // g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID, m_scribblePad);
-}
-
 void Channel::Pin(bool state) {
     if (m_pinned == state) { return; }
 
     m_pinned = state;
     if (state) {
-        m_scribblePad.Colour = xt_colours_t::PINK;
+        m_scribbleColour->Set(xt_colours_t::PINK);
     } else {
-        m_scribblePad.Colour = xt_colours_t::WHITE;
+        m_scribbleColour->Set(xt_colours_t::WHITE);
     }
-    g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
 }
 
 bool Channel::IsPinned() {
@@ -248,8 +249,7 @@ void Channel::Toggle() {
     } else { // 300 text
         text = m_encoder[1].GetName();
     }
-    snprintf(m_scribblePad.BotText, 8, "%s", text.c_str());
-    g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
+    m_scribbleBottomText->Set(text);
 }
 bool Encoder::SetName(std::string name) {
     if (name == m_name) { return false; }
