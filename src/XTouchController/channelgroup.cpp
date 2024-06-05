@@ -280,6 +280,9 @@ void ChannelGroup::HandleButtonPress(char button, bool down) {
 
 
 void ChannelGroup::RefreshPlaybacks() {
+    // Allow board to fully engage before sending requests
+    std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+
     while (true) {
         RefreshPlaybacksImpl();
 

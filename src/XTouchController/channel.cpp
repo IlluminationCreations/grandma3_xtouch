@@ -140,7 +140,7 @@ Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
         snprintf(m_scribblePad.TopText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
         g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad); // PHYSICAL_CHANNEL_ID is 1-indexed, scribble is 0-indexed
     });
-    m_lastPhysicalChange = std::chrono::system_clock::now();
+    m_lastPhysicalChange = std::chrono::system_clock::from_time_t(0);
 
 
     m_encoder = (Encoder*)(malloc(sizeof(Encoder) * 3));
@@ -169,7 +169,7 @@ void Channel::RegisterMaSend(MaUDPServer *server) {
 }
 
 Encoder::Encoder(EncoderId type, uint32_t id): m_type(type), PHYSICAL_CHANNEL_ID(id) {
-    m_lastPhysicalChange = std::chrono::system_clock::now(); // Initialize to now
+    m_lastPhysicalChange = std::chrono::system_clock::from_time_t(0);
 
     // Spent a lot of time trying to figure out why there was stuttering on the dials
     // The 'stuttering' led to the dial, when being turned, would periodically 'jump' back to the previous value
