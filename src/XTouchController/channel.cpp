@@ -92,6 +92,25 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
     // 4xx, 3xx, 2xx encoders
     for(int i = 0; i < 3; i++) {
         m_encoder[i].SetValue(encoder.Encoders[i].value, false);   
+        m_encoder[i].SetActive(encoder.Encoders[i].isActive);
+
+        // Code below is for encoders 4xx and 3xx       
+        if (i == 3) { continue; }
+
+        bool nameWasSet = m_encoder[i].SetName(encoder.Encoders[i].key_name);
+        if (!nameWasSet) { continue; } // If the name was not set, don't update the scribble pad
+        if (m_toggle && i == 1) // m_toggle means we're displaying the 3xx encoder
+        {
+
+            snprintf(m_scribblePad.BotText, 8, "%s", encoder.Encoders[1].key_name);
+            g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
+        }
+        else if (!m_toggle && i == 0) 
+        {
+            snprintf(m_scribblePad.BotText, 8, "%s", encoder.Encoders[0].key_name);
+            g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
+        }
+
     }
 }
 
@@ -113,7 +132,7 @@ Channel::Channel(uint32_t id): PHYSICAL_CHANNEL_ID(id) {
         }
         m_scribblePad.Colour = xt_colours_t::WHITE;
         snprintf(m_scribblePad.TopText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
-        snprintf(m_scribblePad.BotText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
+        // snprintf(m_scribblePad.BotText, 8, "%u.%u", address.mainAddress, 100 + address.subAddress);
         g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad); // PHYSICAL_CHANNEL_ID is 1-indexed, scribble is 0-indexed
     });
     m_lastPhysicalChange = std::chrono::system_clock::now();
@@ -221,11 +240,31 @@ void Encoder::SetValue(float value, bool physical) {
     m_value = value;
 }
 void Channel::Toggle() {
+    // We don't need to toggle if an alternative encoder is not active
+    if (!m_encoder[0].IsActive() || !m_encoder[1].IsActive()) { return; } 
+    printf("Toggling\n");
     m_toggle = !m_toggle;
+    std::string text;
+    if (!m_toggle) { // 400 text
+        text = m_encoder[0].GetName();
+    } else { // 300 text
+        text = m_encoder[1].GetName();
+    }
+    snprintf(m_scribblePad.BotText, 8, "%s", text.c_str());
+    g_xtouch->SetScribble(PHYSICAL_CHANNEL_ID - 1, m_scribblePad);
 }
-void Encoder::SetName(std::string name) {
+bool Encoder::SetName(std::string name) {
+    if (name == m_name) { return false; }
     m_name = name;
+    return true;
+
 }
 std::string Encoder::GetName() {
     return m_name;
+}
+void Encoder::SetActive(bool state) {
+    m_active = state;
+}
+bool Encoder::IsActive() {
+    return m_active;
 }

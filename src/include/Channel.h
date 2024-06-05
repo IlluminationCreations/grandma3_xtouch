@@ -23,7 +23,7 @@ private:
 
     EncoderId m_type; 
     float m_value;
-    bool m_active;
+    bool m_active = false;
     std::string m_name;
     const uint32_t PHYSICAL_CHANNEL_ID;
     time_point m_lastPhysicalChange;
@@ -33,8 +33,10 @@ public:
     Encoder(EncoderId type, uint32_t id);
     float GetValue();
     void SetValue(float value, bool physical);
-    void SetName(std::string name);
+    bool SetName(std::string name);
     std::string GetName();
+    void SetActive(bool state);
+    bool IsActive();
 };
 
 class Channel {
@@ -43,6 +45,7 @@ private:
 
     xt_ScribblePad_t m_scribblePad;
     bool m_pinned = false;
+    bool m_firstUpdateReceived = false;
     Encoder *m_encoder;
     bool m_keysActive[4];
     MaUDPServer *m_maServer;
