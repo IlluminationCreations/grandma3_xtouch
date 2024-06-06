@@ -26,7 +26,6 @@ public:
     void UpdatePinnedChannels(xt_buttons button, bool down);
     void ChangePage(int32_t pageOffset); 
     void ScrollPage(int32_t scrollOffset);
-    void RegisterMAOutCB(std::function<void(char*, uint32_t)> requestCb);
     void RegisterMaSend(MaUDPServer *server); // Temporary, will be removed after refactoring
     std::vector<Address> CurrentChannelAddress();
     void UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, uint32_t physical_channel_id);
@@ -58,7 +57,6 @@ private:
     bool RefreshPlaybacksImpl();
 
     // CBs
-    std::function<void(char*, uint32_t)> cb_RequestMaData;
     MaUDPServer *m_maServer;
     std::function<void(char*, uint32_t)> cb_Send; // Temporary, will be removed after refactoring
 

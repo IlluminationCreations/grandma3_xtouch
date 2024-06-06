@@ -94,9 +94,6 @@ void ChannelGroup::UpdateWatchList() {
         packet->EncoderRequest[i].channel = address.subAddress;
         packet->EncoderRequest[i].page = address.mainAddress;
     }
-
-    if(cb_RequestMaData) { cb_RequestMaData(buffer, buffer_size); }
-    free(buffer);
 }
 
 void ChannelGroup::ChangePage(int32_t pageOffset) {
@@ -265,10 +262,6 @@ ChannelGroup::ChannelGroup() {
     m_playbackRefresh.detach();
 }
 
-void ChannelGroup::RegisterMAOutCB(std::function<void(char*, uint32_t)> requestCb) {
-    cb_RequestMaData = requestCb;
-}
-
 void ChannelGroup::HandleButtonPress(char button, bool down) {
     xt_alias_btn btnAlias = static_cast<xt_alias_btn>(button); 
      if (ButtonUtils::AddressChangingButton(static_cast<xt_buttons>(button))) 
@@ -377,7 +370,8 @@ bool ChannelGroup::RefreshPlaybacksImpl() {
 }
 
 void ChannelGroup::HandleUpdate(UpdateType type, char button, int value) {
-    
+    assert(button >= 0 && button < PHYSICAL_CHANNEL_COUNT);
+
     switch (type) {
         case UpdateType::FADER: 
         { 

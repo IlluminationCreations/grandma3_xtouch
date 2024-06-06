@@ -39,9 +39,12 @@ XTouchController::XTouchController() {
     });
     g_xtouch->RegisterDialCallback([&](unsigned char button, int attr)
     {
-        auto base_address = button - 16; // 16 is the first dial
-        assert(base_address >= 0 && base_address < PHYSICAL_CHANNEL_COUNT);
-        m_group.HandleUpdate(UpdateType::DIAL, base_address, attr);
+        // Addresses of the dials are 16-23
+        if (button >= 16 && button <= 23) {
+            m_group.HandleUpdate(UpdateType::DIAL, button - 16, attr);
+            return;
+        }
+        printf("Dial %u hit, state = %u\n", button, attr);
     });
     g_xtouch->RegisterFaderCallback([&](unsigned char button, int attr)
     {
@@ -55,17 +58,9 @@ XTouchController::XTouchController() {
             m_group.HandleUpdate(UpdateType::MASTER, 0, attr);
         }
     });
-    // g_xtouch->RegisterFaderStateCallback([&](unsigned char fader, int attr)
-    // {
-    //     assert(fader >= 0 && fader <= PHYSICAL_CHANNEL_COUNT);
-    //     bool down = attr == 1;
-
-    //     m_group.FaderTouchState(fader, down); 
-    // });
 
     m_watchDog = std::thread(&XTouchController::WatchDog, this);
     m_watchDog.detach();
-    m_group.RegisterMAOutCB([](void*, uint32_t) {});
     m_group.RegisterMaSend(&ma_server);
 }
 
