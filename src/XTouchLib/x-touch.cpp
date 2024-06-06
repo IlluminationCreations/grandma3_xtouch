@@ -38,6 +38,7 @@ SOFTWARE.
 #include "x-touch.h"
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 unsigned char probe[] =         { 0xf0, 0x00, 0x20, 0x32, 0x58, 0x54, 0x00, 0xf7 };
 unsigned char proberesponse[] = { 0xf0, 0x00, 0x20, 0x32, 0x58, 0x54, 0x01, 0xf7 };
@@ -507,9 +508,38 @@ void XTouch::CheckIdle() {
 }
 
 namespace ButtonUtils {
+    ButtonInfo FaderButtonToButtonType(xt_buttons button) {
+        ButtonInfo info;
+
+        if (button >= FADER_0_REC && button <= FADER_7_REC) {
+            info.buttonType = ButtonType::REC;
+            info.channel = RecButtonToChannel(button);
+        } else if (button >= FADER_0_SOLO && button <= FADER_7_SOLO) {
+            info.buttonType = ButtonType::SOLO;
+            info.channel = SoloButtonToChannel(button);
+        } else if (button >= FADER_0_MUTE && button <= FADER_7_MUTE) {
+            info.buttonType = ButtonType::MUTE;
+            info.channel = MuteButtonToChannel(button);
+        } else if (button >= FADER_0_SELECT && button <= FADER_7_SELECT) {
+            info.buttonType = ButtonType::SELECT;
+            info.channel = SelectButtonToChannel(button);
+        } else {
+            assert(false);
+        }
+
+        return info;
+    }
     int MuteButtonToChannel(xt_buttons button) {
         if (button < FADER_0_MUTE || button > FADER_7_MUTE) { return -1; }
-        return button - FADER_0_MUTE;;
+        return button - FADER_0_MUTE;
+    }
+    int RecButtonToChannel(xt_buttons button) {
+        if (button < FADER_0_REC || button > FADER_7_REC) { return -1; }
+        return button - FADER_0_REC;
+    }
+    int SoloButtonToChannel(xt_buttons button) {
+        if (button < FADER_0_SOLO || button > FADER_7_SOLO) { return -1; }
+        return button - FADER_0_SOLO;
     }
 
     int SelectButtonToChannel(xt_buttons button) {

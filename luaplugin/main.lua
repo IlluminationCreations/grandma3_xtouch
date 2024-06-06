@@ -228,15 +228,39 @@ function Stream:read(format)
 end
 
 ----------------------------------------------
--- User code --
+------------------ Enums ---------------------
 ----------------------------------------------
 local REQ_ENCODERS = 0x8000
 local RESP_ENCODERS = 0x8001
 -- local UNUSED = 0x8002
 local UPDATE_MA_ENCODER = 0x8003
 local UPDATE_MA_MASTER = 0x8004
-local PRESS_MA_KEY = 0x8005
-local PACKET_TYPE_END = 0x8006
+local PRESS_MA_PLAYBACK_KEY = 0x8005
+local PRESS_MA_SYSTEM_KEY = 0x8006
+local PACKET_TYPE_END = 0x8007
+
+local KeyType_CLEAR = 0x10101010
+
+----------------------------------------------
+----------------- Helpers --------------------
+----------------------------------------------
+local function GetEncoder(page_num, channel_num, encoderType)
+	local page = Root().ShowData.DataPools.Default.Pages:Ptr(page_num)
+	if not page then
+		Printf("Page not found")
+		return
+	end
+	local ch = page:Ptr(channel_num + encoderType)
+	if not ch then
+		Printf("Channel not found")
+		return
+	end
+	return ch
+end
+
+----------------------------------------------
+------------------ Funcs ---------------------
+----------------------------------------------
 local function ExtractEncoderRequest(conn)
 	-- IPC_STRUCT {
 	-- 	unsigned int page;
@@ -405,24 +429,19 @@ end
 local function HandleUpdatingLocalEncoder(connection, seq)
 	local _page, channel, encoderType, value = connection.stream:read("<HBHf")
 	encoderType = encoderType - 100 -- Convert to 0-based index, kinda confusing
-	local page = Root().ShowData.DataPools.Default.Pages:Ptr(_page)
-	if not page then
-		Printf("Page not found")
-		return
-	end
-	local ch = page:Ptr(channel + encoderType)
-	if not ch then
-		Printf("Channel not found")
-		return
-	end
-	if _page == 1 and channel == 1 then
-		Printf("Updating fader with value: " .. tostring(value))
-	end
+	local ch = GetEncoder(_page, channel, encoderType)
 	ch:SetFader({value=value})
-	-- Printf("Page: " .. tostring(page) .. " Channel: " .. tostring(channel) .. " EncoderType: " .. tostring(encoderType) .. " Value: " .. tostring(value))
-	if _page == 1 and channel == 1 then
-		Printf("Fader value: " .. tostring(ch:GetFader({})))
+end
+
+local function HandlePressingPlaybackKey(connection, seq)
+	local page, channel, encoder_type, down = connection.stream:read("<HBHB")
+	local ch = GetEncoder(page, channel, encoder_type)
+	if down == 1 then
+		Cmd(tostring(ch["KEY"] .. " Press " .. tostring(ch["EXEC"])))
+	else
+		Cmd(tostring(ch["KEY"] .. " Unpress " .. tostring(ch["EXEC"])))
 	end
+
 end
 
 local function HandleConnection(socket, ip, port, data)
@@ -447,6 +466,10 @@ local function HandleConnection(socket, ip, port, data)
 		HandleUpdatingLocalEncoder(connection, seq)
 	elseif pkt_type == UPDATE_MA_MASTER then
 		HandleUpdatingLocalMasterEncoder(connection, seq)
+	elseif pkt_type == PRESS_MA_PLAYBACK_KEY then
+		HandlePressingPlaybackKey(connection, seq)
+	elseif pkt_type == PRESS_MA_SYSTEM_KEY then
+		-- HandlePressingSystemKey(connection, seq)
 	end
 end
 

@@ -188,8 +188,21 @@ typedef struct {
 } xt_ScribblePad_t;
 
 namespace ButtonUtils {
+    enum class ButtonType : uint16_t {
+        REC = 300,
+        SOLO = 200,
+        MUTE = 100,
+        SELECT = 0,
+    };
+    struct ButtonInfo {
+        ButtonType buttonType;
+        int channel;
+    };
+    int RecButtonToChannel(xt_buttons button);
+    int SoloButtonToChannel(xt_buttons button);
     int MuteButtonToChannel(xt_buttons button);
     int SelectButtonToChannel(xt_buttons button);
+    ButtonInfo FaderButtonToButtonType(xt_buttons button);
     bool AddressChangingButton(xt_buttons button);
 }
 

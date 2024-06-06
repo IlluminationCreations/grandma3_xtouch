@@ -23,7 +23,7 @@ public:
     using time_point = std::chrono::time_point<clock>;
     ChannelGroup();
     void UpdateFader(uint32_t channel, float value);
-    void UpdatePinnedChannels(xt_buttons button);
+    void UpdatePinnedChannels(xt_buttons button, bool down);
     void ChangePage(int32_t pageOffset); 
     void ScrollPage(int32_t scrollOffset);
     void RegisterMAOutCB(std::function<void(char*, uint32_t)> requestCb);

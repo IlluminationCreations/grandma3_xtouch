@@ -11,8 +11,9 @@ namespace IPC {
             // UNUSED = 0x8002,
             UPDATE_MA_ENCODER = 0x8003, 
             UPDATE_MA_MASTER = 0x8004,
-            PRESS_MA_KEY = 0x8005,
-            END = 0x8006,
+            PRESS_MA_PLAYBACK_KEY = 0x8005,
+            PRESS_MA_SYSTEM_KEY = 0x8006,
+            END = 0x8007,
         };
     }
 
@@ -66,4 +67,22 @@ namespace IPC {
         };
     }
 
+    namespace ButtonEvent {
+        // Events for buttons attached to playbacks 
+        IPC_STRUCT ExecutorButton {
+            uint16_t page;
+            uint8_t channel; // eg x01, x02, x03
+            uint16_t type; // [0] 4xx, [1] 3xx, [2] 2xx, [3] 1xx
+            bool down;
+        };
+        // Other buttons, like CLEAR
+        enum class KeyType : uint32_t {
+            CLEAR = 0x10101010
+        };
+
+        IPC_STRUCT SystemKeyDown {
+            KeyType key;
+            bool down;
+        };
+    }
 }

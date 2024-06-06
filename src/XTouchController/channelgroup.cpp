@@ -43,7 +43,8 @@ void ChannelGroup::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, uint3
     channel.UpdateEncoderFromMA(encoder);
 }
 
-void ChannelGroup::UpdatePinnedChannels(xt_buttons button) {
+void ChannelGroup::UpdatePinnedChannels(xt_buttons button, bool down) {
+    if (down) { return; } // Pin on key release
     int selectBtnToChannel = ButtonUtils::SelectButtonToChannel(button);
     int muteBtnToChannel = ButtonUtils::MuteButtonToChannel(button);
     bool btnOutsideRange = 
@@ -270,11 +271,38 @@ void ChannelGroup::RegisterMAOutCB(std::function<void(char*, uint32_t)> requestC
 
 void ChannelGroup::HandleButtonPress(char button, bool down) {
     xt_alias_btn btnAlias = static_cast<xt_alias_btn>(button); 
-     if (ButtonUtils::AddressChangingButton(static_cast<xt_buttons>(button))) {  HandleAddressChange(btnAlias); return; }
+     if (ButtonUtils::AddressChangingButton(static_cast<xt_buttons>(button))) 
+     {  
+        if (down) { return; } // Only handle on key release
+        HandleAddressChange(btnAlias); 
+        return; 
+     }
      if (button >= FADER_0_DIAL_PRESS && button <= FADER_7_DIAL_PRESS) 
      { 
+        if (down) { return; } // Only handle on key release
         auto i = button - FADER_0_DIAL_PRESS;
         m_channels[i].Toggle();
+     }
+     if (button >= FADER_0_REC && button <= FADER_7_SELECT) 
+     {
+        IPC::IPCHeader header;
+        IPC::ButtonEvent::ExecutorButton buttonEvent;
+        header.type = IPC::PacketType::PRESS_MA_PLAYBACK_KEY;
+        header.seq = 0; // TODO: Implement sequence number
+
+        auto buttonInfo = ButtonUtils::FaderButtonToButtonType(static_cast<xt_buttons>(button));
+        auto page = m_channels[buttonInfo.channel].m_address->Get();
+
+        buttonEvent.page = page.mainAddress;
+        buttonEvent.channel = page.subAddress;
+        buttonEvent.type = static_cast<uint16_t>(buttonInfo.buttonType);
+        buttonEvent.down = down;
+
+        auto buffer = (char*)malloc(sizeof(IPC::IPCHeader) + sizeof(IPC::ButtonEvent::ExecutorButton));
+        memcpy(buffer, &header, sizeof(IPC::IPCHeader));
+        memcpy(buffer + sizeof(IPC::IPCHeader), &buttonEvent, sizeof(IPC::ButtonEvent::ExecutorButton));
+        m_maServer->Send(buffer, sizeof(IPC::IPCHeader) + sizeof(IPC::ButtonEvent::ExecutorButton));
+        free(buffer);
      }
 }
 
