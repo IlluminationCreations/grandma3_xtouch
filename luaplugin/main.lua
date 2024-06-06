@@ -247,12 +247,10 @@ local KeyType_CLEAR = 0x10101010
 local function GetEncoder(page_num, channel_num, encoderType)
 	local page = Root().ShowData.DataPools.Default.Pages:Ptr(page_num)
 	if not page then
-		Printf("Page not found")
 		return
 	end
 	local ch = page:Ptr(channel_num + encoderType)
 	if not ch then
-		Printf("Channel not found")
 		return
 	end
 	return ch
@@ -430,12 +428,18 @@ local function HandleUpdatingLocalEncoder(connection, seq)
 	local _page, channel, encoderType, value = connection.stream:read("<HBHf")
 	encoderType = encoderType - 100 -- Convert to 0-based index, kinda confusing
 	local ch = GetEncoder(_page, channel, encoderType)
+	if not ch then
+		return
+	end
 	ch:SetFader({value=value})
 end
 
 local function HandlePressingPlaybackKey(connection, seq)
 	local page, channel, encoder_type, down = connection.stream:read("<HBHB")
 	local ch = GetEncoder(page, channel, encoder_type)
+	if not ch then
+		return
+	end
 	if down == 1 then
 		Cmd(tostring(ch["KEY"] .. " Press " .. tostring(ch["EXEC"])))
 	else
