@@ -3,6 +3,86 @@
 #include <string.h>
 #include <delayed.h>
 
+void ChannelGroup::GroupInterfaceLayer::Resume() {}
+void ChannelGroup::GroupInterfaceLayer::Pause() {}
+void ChannelGroup::GroupInterfaceLayer::Start() {}
+void ChannelGroup::GroupInterfaceLayer::Removed() {}
+bool ChannelGroup::GroupInterfaceLayer::HandleInput(PhysicalEvent event) {
+    return cb_HandleInput(event);
+}
+
+ChannelGroup::ChannelGroup() {
+    m_channels = (Channel*)(malloc(sizeof(Channel) * PHYSICAL_CHANNEL_COUNT));
+    for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
+        auto channel = new (&m_channels[i]) Channel(i + 1);
+    }
+    m_masterFaderEncoder = new Encoder(EncoderId::Master, 0);
+
+    m_page = new Observer<uint32_t>(1, [](uint32_t page) { 
+        g_xtouch->SetAssignment(page);
+    });
+    
+    GenerateChannelWindows();
+    m_playbackRefresh = std::thread(&ChannelGroup::RefreshPlaybacks, this);
+    m_playbackRefresh.detach();
+
+    m_interfaceLayer = new GroupInterfaceLayer();
+    m_interfaceLayer->cb_HandleInput = [this](PhysicalEvent event) { return HandlePhysicalEvent(event); };
+    g_interfaceManager->PushLayer(m_interfaceLayer);
+}
+
+bool ChannelGroup::HandlePhysicalEvent(PhysicalEvent event)
+{
+    switch(event.type) 
+    {
+        case PhysicalEventType::FADER: 
+        {
+            m_channels[event.data.faderDial.Column].UpdateEncoderFromXT(event.data.faderDial.value, true);
+            return true;
+        }
+        case PhysicalEventType::DIAL: 
+        {
+            m_channels[event.data.faderDial.Column].UpdateEncoderFromXT(event.data.faderDial.value, false);
+            return true;
+        }
+        case PhysicalEventType::FADER_BUTTON: 
+        {
+            HandleFaderButton(event.data.faderButton.info, event.data.faderButton.down);
+            return true;
+        }
+        case PhysicalEventType::DIAL_PRESS: 
+        {
+            if (event.data.faderDial.value == 0) { return true; } // Only handle on key release
+            m_channels[event.data.faderDial.Column].Toggle();
+            return true;
+        }
+        case PhysicalEventType::BUTTON: 
+        {
+            if (ButtonUtils::AddressChangingButton(static_cast<xt_buttons>(event.data.button.Id))) 
+            {  
+                // Only handle on key release
+                if (!event.data.button.down) { HandleAddressChange(static_cast<xt_alias_btn>(event.data.button.Id)); } 
+                return true;
+            }
+            return false;
+        }
+        case PhysicalEventType::MASTER: 
+        {
+            UpdateMasterEncoder(event.data.master.value);
+            return true;
+        }
+        case PhysicalEventType::JOG: 
+        {
+            return false;
+        }
+        default:
+        {
+            assert(false && "Enum updated, handle new type");
+        }
+    }
+    assert(false && "Event not handled");
+}
+
 void ChannelGroup::HandleAddressChange(xt_alias_btn btn) {
     switch (btn) {
         case xt_alias_btn::EXECUTER_SCROLL_LEFT: 
@@ -250,59 +330,29 @@ void ChannelGroup::TogglePinConfigMode() {
     }
 }
 
-ChannelGroup::ChannelGroup() {
-    m_channels = (Channel*)(malloc(sizeof(Channel) * PHYSICAL_CHANNEL_COUNT));
-    for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-        auto channel = new (&m_channels[i]) Channel(i + 1);
-    }
-    m_masterFaderEncoder = new Encoder(EncoderId::Master, 0);
+void ChannelGroup::HandleFaderButton(ButtonUtils::ButtonInfo info, bool down) {
+    IPC::IPCHeader header;
+    IPC::ButtonEvent::ExecutorButton buttonEvent;
+    header.type = IPC::PacketType::PRESS_MA_PLAYBACK_KEY;
+    header.seq = 0; // TODO: Implement sequence number
 
-    m_page = new Observer<uint32_t>(1, [](uint32_t page) { 
-        g_xtouch->SetAssignment(page);
-    });
-    
-    GenerateChannelWindows();
-    m_playbackRefresh = std::thread(&ChannelGroup::RefreshPlaybacks, this);
-    m_playbackRefresh.detach();
+    auto page = m_channels[info.channel].m_address->Get();
+
+    buttonEvent.page = page.mainAddress;
+    buttonEvent.channel = page.subAddress;
+    buttonEvent.type = static_cast<uint16_t>(info.buttonType);
+    buttonEvent.down = down;
+
+    auto buffer = (char*)malloc(sizeof(IPC::IPCHeader) + sizeof(IPC::ButtonEvent::ExecutorButton));
+    memcpy(buffer, &header, sizeof(IPC::IPCHeader));
+    memcpy(buffer + sizeof(IPC::IPCHeader), &buttonEvent, sizeof(IPC::ButtonEvent::ExecutorButton));
+    m_maServer->Send(buffer, sizeof(IPC::IPCHeader) + sizeof(IPC::ButtonEvent::ExecutorButton));
+    free(buffer);
 }
 
 void ChannelGroup::HandleButtonPress(char button, bool down) {
-    xt_alias_btn btnAlias = static_cast<xt_alias_btn>(button); 
-     if (ButtonUtils::AddressChangingButton(static_cast<xt_buttons>(button))) 
-     {  
-        if (down) { return; } // Only handle on key release
-        HandleAddressChange(btnAlias); 
-        return; 
-     }
-     if (button >= FADER_0_DIAL_PRESS && button <= FADER_7_DIAL_PRESS) 
-     { 
-        if (down) { return; } // Only handle on key release
-        auto i = button - FADER_0_DIAL_PRESS;
-        m_channels[i].Toggle();
-     }
-     if (button >= FADER_0_REC && button <= FADER_7_SELECT) 
-     {
-        IPC::IPCHeader header;
-        IPC::ButtonEvent::ExecutorButton buttonEvent;
-        header.type = IPC::PacketType::PRESS_MA_PLAYBACK_KEY;
-        header.seq = 0; // TODO: Implement sequence number
 
-        auto buttonInfo = ButtonUtils::FaderButtonToButtonType(static_cast<xt_buttons>(button));
-        auto page = m_channels[buttonInfo.channel].m_address->Get();
-
-        buttonEvent.page = page.mainAddress;
-        buttonEvent.channel = page.subAddress;
-        buttonEvent.type = static_cast<uint16_t>(buttonInfo.buttonType);
-        buttonEvent.down = down;
-
-        auto buffer = (char*)malloc(sizeof(IPC::IPCHeader) + sizeof(IPC::ButtonEvent::ExecutorButton));
-        memcpy(buffer, &header, sizeof(IPC::IPCHeader));
-        memcpy(buffer + sizeof(IPC::IPCHeader), &buttonEvent, sizeof(IPC::ButtonEvent::ExecutorButton));
-        m_maServer->Send(buffer, sizeof(IPC::IPCHeader) + sizeof(IPC::ButtonEvent::ExecutorButton));
-        free(buffer);
-     }
 }
-
 
 void ChannelGroup::RefreshPlaybacks() {
     // Allow board to fully engage before sending requests
@@ -421,3 +471,4 @@ void ChannelGroup::UpdateMasterEncoder(int value) {
     m_maServer->Send(buffer, packet_size);
     free(buffer);
 }
+

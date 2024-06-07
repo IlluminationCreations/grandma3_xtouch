@@ -1,1 +1,1 @@
-add_library(HELPERS_LIB alive.cpp delayed.cpp)
+add_library(HELPERS_LIB alive.cpp delayed.cpp interface.cpp)

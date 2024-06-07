@@ -9,6 +9,7 @@
 #include <mutex>
 #include <delayed.h>
 #include <chrono>
+#include <interface.h>
 
 enum class UpdateType {
     FADER,
@@ -39,6 +40,16 @@ public:
     bool InPinMode();
 
 private:
+    struct GroupInterfaceLayer : public InterfaceLayer {
+        void Resume() override;
+        void Pause() override;
+        void Start() override;
+        void Removed() override;
+        bool HandleInput(PhysicalEvent event) override;
+        std::function<bool(PhysicalEvent)> cb_HandleInput;
+    };
+
+    GroupInterfaceLayer *m_interfaceLayer;
 
     void UpdateWatchList(); 
     void TogglePinConfigMode();
@@ -46,6 +57,8 @@ private:
     void HandleAddressChange(xt_alias_btn btn);
     void RefreshPlaybacks();
     bool RefreshPlaybacksImpl();
+    bool HandlePhysicalEvent(PhysicalEvent event);
+    void HandleFaderButton(ButtonUtils::ButtonInfo info, bool down);
 
     // CBs
     MaUDPServer *m_maServer;

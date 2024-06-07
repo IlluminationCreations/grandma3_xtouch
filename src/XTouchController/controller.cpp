@@ -8,6 +8,7 @@
 #include <guards.h>
 #include <cmath>
 
+
 bool operator<(const Address& a, const Address& b) {
     if (a.mainAddress == b.mainAddress && a.subAddress == b.subAddress) { return false; }
 
@@ -31,33 +32,33 @@ XTouchController::XTouchController() {
         xt_server->Send(buffer, len);
     });
 
-    g_xtouch->RegisterButtonCallback([&](unsigned char button, int attr)
-    {
-        if(!HandleButton(static_cast<xt_buttons>(button), attr == 1)) {
-            printf("Button %u hit, state = %u\n", button, attr);
-        }
-    });
-    g_xtouch->RegisterDialCallback([&](unsigned char button, int attr)
-    {
-        // Addresses of the dials are 16-23
-        if (button >= 16 && button <= 23) {
-            m_group.HandleUpdate(UpdateType::DIAL, button - 16, attr);
-            return;
-        }
-        printf("Dial %u hit, state = %u\n", button, attr);
-    });
-    g_xtouch->RegisterFaderCallback([&](unsigned char button, int attr)
-    {
-        assert(button >= 0 && button <= PHYSICAL_CHANNEL_COUNT);
-        if (button < 8) 
-        {
-            m_group.HandleUpdate(UpdateType::FADER, button, attr);
-        }
-        else 
-        {
-            m_group.HandleUpdate(UpdateType::MASTER, 0, attr);
-        }
-    });
+    // g_xtouch->RegisterButtonCallback([&](unsigned char button, int attr)
+    // {
+    //     if(!HandleButton(static_cast<xt_buttons>(button), attr == 1)) {
+    //         printf("Button %u hit, state = %u\n", button, attr);
+    //     }
+    // });
+    // g_xtouch->RegisterDialCallback([&](unsigned char button, int attr)
+    // {
+    //     // Addresses of the dials are 16-23
+    //     if (button >= 16 && button <= 23) {
+    //         m_group.HandleUpdate(UpdateType::DIAL, button - 16, attr);
+    //         return;
+    //     }
+    //     printf("Dial %u hit, state = %u\n", button, attr);
+    // });
+    // g_xtouch->RegisterFaderCallback([&](unsigned char button, int attr)
+    // {
+    //     assert(button >= 0 && button <= PHYSICAL_CHANNEL_COUNT);
+    //     if (button < 8) 
+    //     {
+    //         m_group.HandleUpdate(UpdateType::FADER, button, attr);
+    //     }
+    //     else 
+    //     {
+    //         m_group.HandleUpdate(UpdateType::MASTER, 0, attr);
+    //     }
+    // });
 
     m_watchDog = std::thread(&XTouchController::WatchDog, this);
     m_watchDog.detach();

@@ -222,15 +222,16 @@ class XTouch {
         void SetMeterLevel(int channel, int level);
         void SetSingleButton(unsigned char n, xt_button_state_t v);
         void SetScribble(int channel, xt_ScribblePad_t info);
-
-    
-        void RegisterFaderCallback(EventCallback Handler);
-        void RegisterFaderStateCallback(EventCallback Handler);
-        void RegisterDialCallback(EventCallback Handler);
-        void RegisterButtonCallback(EventCallback Handler); 
         void RegisterPacketSender(PacketCallback handler);     
 
     private:
+        friend class InterfaceManager;
+        void RegisterFaderCallback(EventCallback Handler);
+        void RegisterDialCallback(EventCallback Handler);
+        void RegisterButtonCallback(EventCallback Handler); 
+
+        void RegisterFaderTouch(EventCallback Handler);
+
         int HandleFaderTouch(unsigned char *buffer, unsigned int len);
         int HandleLevel(unsigned char *buffer, unsigned int len);
         int HandleRotation(unsigned char *buffer, unsigned int len);
