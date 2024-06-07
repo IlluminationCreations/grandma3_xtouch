@@ -49,6 +49,17 @@ private:
         std::function<bool(PhysicalEvent)> cb_HandleInput;
     };
 
+    struct PinInterfaceLayer : public InterfaceLayer {
+        Channel *m_channels;
+        void Resume() override;
+        void Pause() override;
+        void Start() override;
+        void Removed() override;
+        bool HandleInput(PhysicalEvent event) override;
+        void UpdateLights();
+        PinInterfaceLayer(Channel *channels) : m_channels(channels) {};
+    };
+
     GroupInterfaceLayer *m_interfaceLayer;
 
     void UpdateWatchList(); 

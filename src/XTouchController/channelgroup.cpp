@@ -3,7 +3,68 @@
 #include <string.h>
 #include <delayed.h>
 
-void ChannelGroup::GroupInterfaceLayer::Resume() {}
+void ChannelGroup::PinInterfaceLayer::Resume() {}
+void ChannelGroup::PinInterfaceLayer::UpdateLights() {
+    g_xtouch->ClearButtonLights();
+    g_xtouch->SetSingleButton(static_cast<xt_buttons>(xt_alias_btn::PIN), xt_button_state_t::ON);
+
+     for(int i = 0; i < 8; i++) {
+        auto select_btn = static_cast<xt_buttons>(FADER_0_SELECT + i);
+        auto mute_btn = static_cast<xt_buttons>(FADER_0_MUTE + i);
+
+        if (m_channels[i].IsPinned()) {
+            g_xtouch->SetSingleButton(mute_btn, xt_button_state_t::FLASHING);
+        } else {
+            g_xtouch->SetSingleButton(select_btn, xt_button_state_t::FLASHING);
+        }
+    }
+}
+void ChannelGroup::PinInterfaceLayer::Pause() {}
+void ChannelGroup::PinInterfaceLayer::Start() {
+    UpdateLights();
+}
+void ChannelGroup::PinInterfaceLayer::Removed() { delete this; }
+bool ChannelGroup::PinInterfaceLayer::HandleInput(PhysicalEvent event) {
+    switch(event.type)
+    {
+        case PhysicalEventType::BUTTON:
+        {
+            if (event.data.button.Id == xt_alias_btn::PIN) 
+            {
+                if (event.data.button.down) { return true; } // Only handle on key release
+                g_interfaceManager->PopLayer();
+            }
+            return true;
+        }
+        case PhysicalEventType::FADER_BUTTON:
+        {
+            if (event.data.faderButton.down) { return true; } // Only handle on key release
+            auto info = event.data.faderButton.info;
+            if (info.buttonType == ButtonUtils::ButtonType::SELECT) 
+            {
+                m_channels[info.channel].Pin(true);
+                UpdateLights();
+            }
+            if (info.buttonType == ButtonUtils::ButtonType::MUTE) 
+            {
+                m_channels[info.channel].Pin(false);
+                UpdateLights();
+            }
+
+            return true;
+        }
+        default:
+        {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+void ChannelGroup::GroupInterfaceLayer::Resume() {
+    g_xtouch->ClearButtonLights();
+}
 void ChannelGroup::GroupInterfaceLayer::Pause() {}
 void ChannelGroup::GroupInterfaceLayer::Start() {}
 void ChannelGroup::GroupInterfaceLayer::Removed() {}
@@ -62,6 +123,13 @@ bool ChannelGroup::HandlePhysicalEvent(PhysicalEvent event)
             {  
                 // Only handle on key release
                 if (!event.data.button.down) { HandleAddressChange(static_cast<xt_alias_btn>(event.data.button.Id)); } 
+                return true;
+            }
+            if (event.data.button.Id == xt_alias_btn::PIN) 
+            {
+                if (event.data.button.down) { return true; } // Only handle on key release
+                auto pinlayer = new PinInterfaceLayer(m_channels);
+                g_interfaceManager->PushLayer(pinlayer);
                 return true;
             }
             return false;
@@ -301,6 +369,9 @@ void ChannelGroup::GenerateChannelWindows() {
 }
 
 void ChannelGroup::TogglePinConfigMode() {
+    // auto pinlayer = new PinInterfaceLayer();
+    // g_interfaceManager->PushLayer(pinlayer);
+    return;
     m_pinConfigMode = !m_pinConfigMode;
     if (m_pinConfigMode) {printf("Entering pin config mode\n"); }
     if (!m_pinConfigMode) {printf("Exiting pin config mode\n"); }

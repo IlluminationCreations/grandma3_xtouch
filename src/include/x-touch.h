@@ -223,6 +223,7 @@ class XTouch {
         void SetSingleButton(unsigned char n, xt_button_state_t v);
         void SetScribble(int channel, xt_ScribblePad_t info);
         void RegisterPacketSender(PacketCallback handler);     
+        void ClearButtonLights();
 
     private:
         friend class InterfaceManager;

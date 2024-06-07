@@ -347,6 +347,15 @@ void XTouch::SendSingleDial(unsigned char n, int value)
 
 }
 
+void XTouch::ClearButtonLights()
+{
+    int i;
+    for(i=0;i<127;i++) {
+        mButtonLEDStates[i]=OFF;
+    }
+    SendAllButtons();
+}
+
 void XTouch::SendAllScribble()
 {
     int n;
