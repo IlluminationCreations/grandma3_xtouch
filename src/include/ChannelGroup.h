@@ -22,7 +22,6 @@ class ChannelGroup {
 public:
     ChannelGroup();
     void UpdateFader(uint32_t channel, float value);
-    void UpdatePinnedChannels(xt_buttons button, bool down);
     void ChangePage(int32_t pageOffset); 
     void ScrollPage(int32_t scrollOffset);
     void RegisterMaSend(MaUDPServer *server); // Temporary, will be removed after refactoring

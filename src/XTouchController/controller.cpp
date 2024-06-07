@@ -8,7 +8,6 @@
 #include <guards.h>
 #include <cmath>
 
-
 bool operator<(const Address& a, const Address& b) {
     if (a.mainAddress == b.mainAddress && a.subAddress == b.subAddress) { return false; }
 
@@ -92,13 +91,3 @@ void XTouchController::SpawnServer(SpawnType type) {
         }
     }
 }
-
-bool XTouchController::HandleButton(xt_buttons btn, bool down) {
-        xt_alias_btn btnAlias = static_cast<xt_alias_btn>(btn);
-    if (m_group.InPinMode() || btnAlias == xt_alias_btn::PIN) { m_group.UpdatePinnedChannels(btn, down); return true; }
-    if (ButtonUtils::AddressChangingButton(btn)) {  m_group.HandleButtonPress(btnAlias, down); return true;}
-    if (btn >= FADER_0_DIAL_PRESS && btn <= FADER_7_DIAL_PRESS) { m_group.HandleButtonPress(btn, down); return true; }
-    if (btn >= FADER_0_REC && btn <= FADER_7_SELECT) { m_group.HandleButtonPress(btn, down); return true; }
-    return false;
-}
-

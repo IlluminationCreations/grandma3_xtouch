@@ -191,42 +191,6 @@ void ChannelGroup::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, uint3
     channel.UpdateEncoderFromMA(encoder);
 }
 
-void ChannelGroup::UpdatePinnedChannels(xt_buttons button, bool down) {
-    if (down) { return; } // Pin on key release
-    int selectBtnToChannel = ButtonUtils::SelectButtonToChannel(button);
-    int muteBtnToChannel = ButtonUtils::MuteButtonToChannel(button);
-    bool btnOutsideRange = 
-        (selectBtnToChannel == -1) && 
-        (muteBtnToChannel == -1) && 
-        (button != xt_alias_btn::PIN);
-    bool muteButtonHit = muteBtnToChannel != -1;
-    bool selectButtonHit = selectBtnToChannel != -1;
-
-    if (m_pinConfigMode) {
-        TogglePinConfigMode();
-        if (btnOutsideRange) {
-            return;
-        } 
-        if (muteButtonHit) {
-            printf("Unpinning channel %u\n", muteBtnToChannel);
-            m_channels[muteBtnToChannel].Pin(false);
-            GenerateChannelWindows();
-            return;
-        }
-        if (selectButtonHit) {
-            printf("Pinning channel %u\n", selectBtnToChannel);
-            m_channels[selectBtnToChannel].Pin(true);
-            GenerateChannelWindows();
-            return;
-        }
-        return;
-    } 
-    if (button == xt_alias_btn::PIN) {
-        TogglePinConfigMode();
-        return;
-    }  
-}
-
 void ChannelGroup::UpdateWatchList() {
     auto buffer_size = sizeof(IPC::IPCHeader) + sizeof(IPC::PlaybackRefresh::Request);
     char *buffer = (char*)malloc(buffer_size);
@@ -242,10 +206,6 @@ void ChannelGroup::UpdateWatchList() {
         packet->EncoderRequest[i].channel = address.subAddress;
         packet->EncoderRequest[i].page = address.mainAddress;
     }
-}
-
-bool ChannelGroup::InPinMode() {
-    return m_pinConfigMode;
 }
 
 void ChannelGroup::ChangePage(int32_t pageOffset) {
@@ -366,39 +326,6 @@ void ChannelGroup::GenerateChannelWindows() {
     if (cur_window.size() > 0) { windows.push_back(cur_window); }
     m_channelWindows = std::move(windows);
     m_channelOffsetEnd = m_channelWindows.size() - 1;
-}
-
-void ChannelGroup::TogglePinConfigMode() {
-    // auto pinlayer = new PinInterfaceLayer();
-    // g_interfaceManager->PushLayer(pinlayer);
-    return;
-    m_pinConfigMode = !m_pinConfigMode;
-    if (m_pinConfigMode) {printf("Entering pin config mode\n"); }
-    if (!m_pinConfigMode) {printf("Exiting pin config mode\n"); }
-    assert(g_xtouch != nullptr && "XTouch instance not created");
-
-    if (m_pinConfigMode) {
-        g_xtouch->SetSingleButton(static_cast<xt_buttons>(xt_alias_btn::PIN), xt_button_state_t::ON);
-        for(int i = 0; i < sizeof(m_channels); i++) {
-            auto select_btn = static_cast<xt_buttons>(FADER_0_SELECT + i);
-            auto mute_btn = static_cast<xt_buttons>(FADER_0_MUTE + i);
-
-            if (m_channels[i].IsPinned()) {
-                g_xtouch->SetSingleButton(mute_btn, xt_button_state_t::FLASHING);
-            } else {
-                g_xtouch->SetSingleButton(select_btn, xt_button_state_t::FLASHING);
-            }
-        }
-    }
-    else {
-        g_xtouch->SetSingleButton(static_cast<xt_buttons>(xt_alias_btn::PIN), xt_button_state_t::OFF);
-        for(int i = 0; i < sizeof(m_channels); i++) {
-            auto select_btn = static_cast<xt_buttons>(FADER_0_SELECT + i);
-            auto mute_btn = static_cast<xt_buttons>(FADER_0_MUTE + i);
-            g_xtouch->SetSingleButton(select_btn, xt_button_state_t::OFF);
-            g_xtouch->SetSingleButton(mute_btn, xt_button_state_t::OFF);
-        }
-    }
 }
 
 void ChannelGroup::HandleFaderButton(ButtonUtils::ButtonInfo info, bool down) {
