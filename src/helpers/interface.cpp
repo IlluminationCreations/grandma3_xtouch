@@ -19,31 +19,31 @@ void BaseLayer::Removed() {
 bool BaseLayer::HandleInput(PhysicalEvent event) {
     switch(event.type) {
         case PhysicalEventType::FADER: {
-            printf("Fader %u hit, state = %u\n", event.data.faderDial.Column, event.data.faderDial.value);
+            printf("[BaseLayer] Fader %u hit, state = %u\n", event.data.faderDial.Column, event.data.faderDial.value);
             break;
         }
         case PhysicalEventType::DIAL: {
-            printf("Dial %u hit, state = %d\n", event.data.faderDial.Column, event.data.faderDial.value);
+            printf("[BaseLayer] Dial %u hit, state = %d\n", event.data.faderDial.Column, event.data.faderDial.value);
             break;
         }
         case PhysicalEventType::FADER_BUTTON: {
-            printf("Fader button %hu on channel %u hit, state = %u\n", event.data.faderButton.info.buttonType, event.data.faderButton.info.channel, event.data.faderButton.down);
+            printf("[BaseLayer] Fader button %hu on channel %u hit, state = %u\n", event.data.faderButton.info.buttonType, event.data.faderButton.info.channel, event.data.faderButton.down);
             break;
         }
         case PhysicalEventType::DIAL_PRESS: {
-            printf("Dial press %u hit, state = %u\n", event.data.faderDial.Column, event.data.faderDial.value);
+            printf("[BaseLayer] Dial press %u hit, state = %u\n", event.data.faderDial.Column, event.data.faderDial.value);
             break;
         }
         case PhysicalEventType::BUTTON: {
-            printf("Button %u hit, state = %u\n", event.data.button.Id, event.data.button.down);
+            printf("[BaseLayer] Button %u hit, state = %u\n", event.data.button.Id, event.data.button.down);
             break;
         }
         case PhysicalEventType::MASTER: {
-            printf("Master hit, state = %u\n", event.data.master.value);
+            printf("[BaseLayer] Master hit, state = %u\n", event.data.master.value);
             break;
         }
         case PhysicalEventType::JOG: {
-            printf("Jog hit, state = %d\n", event.data.jog.value);
+            printf("[BaseLayer] Jog hit, state = %d\n", event.data.jog.value);
             break;
         }
     }
