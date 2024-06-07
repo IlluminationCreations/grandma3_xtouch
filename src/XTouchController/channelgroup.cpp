@@ -96,6 +96,10 @@ void ChannelGroup::UpdateWatchList() {
     }
 }
 
+bool ChannelGroup::InPinMode() {
+    return m_pinConfigMode;
+}
+
 void ChannelGroup::ChangePage(int32_t pageOffset) {
     assert(pageOffset == -1 || pageOffset == 1);
     m_sequence = m_sequence + 1;

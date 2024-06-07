@@ -19,8 +19,6 @@ enum class UpdateType {
 
 class ChannelGroup {
 public:
-    using clock = std::chrono::high_resolution_clock;
-    using time_point = std::chrono::time_point<clock>;
     ChannelGroup();
     void UpdateFader(uint32_t channel, float value);
     void UpdatePinnedChannels(xt_buttons button, bool down);
@@ -38,14 +36,7 @@ public:
 
     void UpdateEncoderFromXT(uint32_t physical_channel_id, int value, bool isFader);
     void UpdateMasterEncoder(int value);
-
-    bool m_pinConfigMode = false;
-    Observer<uint32_t> *m_page; // Concrete concept
-
-    uint32_t m_channelOffset = 0; // Offset is relative based on number of channels pinned
-    uint32_t m_channelOffsetEnd = 0; // Final m_channelWindows index
-    float m_masterFader = 0.0f;
-    uint32_t m_sequence = 0;
+    bool InPinMode();
 
 private:
 
@@ -65,4 +56,12 @@ private:
     Encoder *m_masterFaderEncoder;
     std::vector<std::vector<uint32_t>> m_channelWindows;
     std::thread m_playbackRefresh;
+
+    bool m_pinConfigMode = false;
+    Observer<uint32_t> *m_page; // Concrete concept
+
+    uint32_t m_channelOffset = 0; // Offset is relative based on number of channels pinned
+    uint32_t m_channelOffsetEnd = 0; // Final m_channelWindows index
+    float m_masterFader = 0.0f;
+    uint32_t m_sequence = 0;
 };
