@@ -58,7 +58,7 @@ public:
     // Updates internal value, and sends data to GrandMA3
     void UpdateEncoderFromXT(int value, bool isFader);
     // Updates value and fader based on GrandMA3 state
-    void UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder);
+    void UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoderr, bool updateButtonLights);
     void Pin(bool state);
     bool IsPinned();
     void Disable();

@@ -226,6 +226,7 @@ void XTouch::SetTime(struct tm* t) {
 // 115 Solo - on 7-seg display
 void XTouch::SetSingleButton(unsigned char n, xt_button_state_t v) {
     if ((n>115)||(v>2)) return;
+    if (mButtonLEDStates[n]==v) return;
     mButtonLEDStates[n]=v;
     SendSingleButton(n);
 }

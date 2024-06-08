@@ -85,7 +85,7 @@ void Channel::UpdateDial(int value) {
     m_lastPhysicalChange = std::chrono::system_clock::now();
 }
 
-void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
+void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, bool updateButtonLights) {
     auto address = m_address->Get();
     ASSERT_EQ_INT(address.mainAddress, encoder.page);
     ASSERT_EQ_INT(address.subAddress, encoder.channel);
@@ -111,6 +111,8 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
         }
 
     }
+
+    if (!updateButtonLights) { return; }
 
     // Here we light up or turn off buttons on the X-Touch based on if a "channel"
     // has a key active for that encoder. REC, SOLO, MUTE, SELECT represents keys 4xx, 3xx, 2xx, 1xx respectively

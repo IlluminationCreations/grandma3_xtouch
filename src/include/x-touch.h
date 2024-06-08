@@ -267,6 +267,7 @@ class XTouch {
         time_t mLastIdle;
         int mFullRefreshNeeded;
         xt_button_state_t mButtonLEDStates[127];
+        bool m_dirty[127];
         std::vector<xt_button_state_t*> mButtonLEDStack;
         
         unsigned char mMeterLevels[8];

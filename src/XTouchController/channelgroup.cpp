@@ -200,8 +200,7 @@ void ChannelGroup::DisablePhysicalChannel(uint32_t i) {
 void ChannelGroup::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, uint32_t physical_channel_id) {
     assert(physical_channel_id >= 0 && physical_channel_id < 8);
     auto &channel = m_channels[physical_channel_id];
-    if (m_blockUpdates) { return; }
-    channel.UpdateEncoderFromMA(encoder);
+    channel.UpdateEncoderFromMA(encoder, !m_blockUpdates);
 }
 
 void ChannelGroup::UpdateWatchList() {
