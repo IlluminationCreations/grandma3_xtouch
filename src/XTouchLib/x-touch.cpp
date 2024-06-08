@@ -356,6 +356,32 @@ void XTouch::ClearButtonLights()
     SendAllButtons();
 }
 
+void XTouch::PushLightState(bool reset)
+{
+    xt_button_state_t *buffer = new xt_button_state_t[127];
+    for(int i = 0; i < 127; i++) {
+        buffer[i] = mButtonLEDStates[i];
+    }
+    mButtonLEDStack.push_back(buffer);
+
+    if (!reset) { return; }
+    for(int i=0;i<127;i++) {
+        mButtonLEDStates[i]=OFF;
+    }
+    SendAllButtons();
+}
+
+void XTouch::PopLightState()
+{
+    auto buffer = mButtonLEDStack.back();
+    mButtonLEDStack.pop_back();
+    for(int i = 0; i < 127; i++) {
+        mButtonLEDStates[i] = buffer[i];
+    }
+    free(buffer);
+    SendAllButtons();
+}
+
 void XTouch::SendAllScribble()
 {
     int n;

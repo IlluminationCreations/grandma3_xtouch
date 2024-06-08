@@ -224,6 +224,8 @@ class XTouch {
         void SetScribble(int channel, xt_ScribblePad_t info);
         void RegisterPacketSender(PacketCallback handler);     
         void ClearButtonLights();
+        void PushLightState(bool reset);
+        void PopLightState();
 
     private:
         friend class InterfaceManager;
@@ -265,6 +267,8 @@ class XTouch {
         time_t mLastIdle;
         int mFullRefreshNeeded;
         xt_button_state_t mButtonLEDStates[127];
+        std::vector<xt_button_state_t*> mButtonLEDStack;
+        
         unsigned char mMeterLevels[8];
         unsigned int mFaderLevels[9];
         unsigned char mSegmentCache[12];

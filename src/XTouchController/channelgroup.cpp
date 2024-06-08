@@ -64,11 +64,12 @@ bool ChannelGroup::PinInterfaceLayer::HandleInput(PhysicalEvent event) {
 }
 
 void ChannelGroup::GroupInterfaceLayer::Resume() {
-    g_xtouch->ClearButtonLights();
     m_group->GenerateChannelWindows(); // Regenerate the channel windows in case the user has pinned/unpinned channels
-
+    g_xtouch->PopLightState();
 }
-void ChannelGroup::GroupInterfaceLayer::Pause() {}
+void ChannelGroup::GroupInterfaceLayer::Pause() {
+    g_xtouch->PushLightState(true);
+}
 void ChannelGroup::GroupInterfaceLayer::Start() {}
 void ChannelGroup::GroupInterfaceLayer::Removed() {}
 bool ChannelGroup::GroupInterfaceLayer::HandleInput(PhysicalEvent event) {
