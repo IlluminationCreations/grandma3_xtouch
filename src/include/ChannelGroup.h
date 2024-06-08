@@ -40,12 +40,15 @@ public:
 
 private:
     struct GroupInterfaceLayer : public InterfaceLayer {
+        ChannelGroup *m_group;
         void Resume() override;
         void Pause() override;
         void Start() override;
         void Removed() override;
+        GroupInterfaceLayer(ChannelGroup *group) : m_group(group) {};
         bool HandleInput(PhysicalEvent event) override;
         std::function<bool(PhysicalEvent)> cb_HandleInput;
+        friend class ChannelGroup;
     };
 
     struct PinInterfaceLayer : public InterfaceLayer {

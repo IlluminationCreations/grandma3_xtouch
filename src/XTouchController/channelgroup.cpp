@@ -3,7 +3,8 @@
 #include <string.h>
 #include <delayed.h>
 
-void ChannelGroup::PinInterfaceLayer::Resume() {}
+void ChannelGroup::PinInterfaceLayer::Resume() {
+}
 void ChannelGroup::PinInterfaceLayer::UpdateLights() {
     g_xtouch->ClearButtonLights();
     g_xtouch->SetSingleButton(static_cast<xt_buttons>(xt_alias_btn::PIN), xt_button_state_t::ON);
@@ -64,6 +65,8 @@ bool ChannelGroup::PinInterfaceLayer::HandleInput(PhysicalEvent event) {
 
 void ChannelGroup::GroupInterfaceLayer::Resume() {
     g_xtouch->ClearButtonLights();
+    m_group->GenerateChannelWindows(); // Regenerate the channel windows in case the user has pinned/unpinned channels
+
 }
 void ChannelGroup::GroupInterfaceLayer::Pause() {}
 void ChannelGroup::GroupInterfaceLayer::Start() {}
@@ -87,7 +90,7 @@ ChannelGroup::ChannelGroup() {
     m_playbackRefresh = std::thread(&ChannelGroup::RefreshPlaybacks, this);
     m_playbackRefresh.detach();
 
-    m_interfaceLayer = new GroupInterfaceLayer();
+    m_interfaceLayer = new GroupInterfaceLayer(this);
     m_interfaceLayer->cb_HandleInput = [this](PhysicalEvent event) { return HandlePhysicalEvent(event); };
     g_interfaceManager->PushLayer(m_interfaceLayer);
 }
@@ -98,12 +101,16 @@ bool ChannelGroup::HandlePhysicalEvent(PhysicalEvent event)
     {
         case PhysicalEventType::FADER: 
         {
-            m_channels[event.data.faderDial.Column].UpdateEncoderFromXT(event.data.faderDial.value, true);
+            auto column = event.data.faderDial.Column;
+            assert(column >= 0 && column < 8); // Ensure we're within bounds
+            m_channels[column].UpdateEncoderFromXT(event.data.faderDial.value, true);
             return true;
         }
         case PhysicalEventType::DIAL: 
         {
-            m_channels[event.data.faderDial.Column].UpdateEncoderFromXT(event.data.faderDial.value, false);
+            auto column = event.data.faderDial.Column;
+            assert(column >= 0 && column < 8); // Ensure we're within bounds
+            m_channels[column].UpdateEncoderFromXT(event.data.faderDial.value, false);
             return true;
         }
         case PhysicalEventType::FADER_BUTTON: 
@@ -114,7 +121,9 @@ bool ChannelGroup::HandlePhysicalEvent(PhysicalEvent event)
         case PhysicalEventType::DIAL_PRESS: 
         {
             if (event.data.faderDial.value == 0) { return true; } // Only handle on key release
-            m_channels[event.data.faderDial.Column].Toggle();
+            auto column = event.data.faderDial.Column;
+            assert(column >= 0 && column < 8); // Ensure we're within bounds
+            m_channels[column].Toggle();
             return true;
         }
         case PhysicalEventType::BUTTON: 
