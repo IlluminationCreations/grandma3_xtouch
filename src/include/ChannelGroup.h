@@ -90,4 +90,5 @@ private:
     uint32_t m_channelOffsetEnd = 0; // Final m_channelWindows index
     float m_masterFader = 0.0f;
     uint32_t m_sequence = 0;
+    bool m_blockUpdates = false;
 };

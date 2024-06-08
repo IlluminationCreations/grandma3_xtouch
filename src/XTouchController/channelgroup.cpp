@@ -7,16 +7,16 @@ void ChannelGroup::PinInterfaceLayer::Resume() {
 }
 void ChannelGroup::PinInterfaceLayer::UpdateLights() {
     g_xtouch->ClearButtonLights();
-    g_xtouch->SetSingleButton(static_cast<xt_buttons>(xt_alias_btn::PIN), xt_button_state_t::ON);
+    g_xtouch->SetSingleButton(static_cast<xt_buttons>(xt_alias_btn::PIN), xt_button_state_t::FLASHING);
 
      for(int i = 0; i < 8; i++) {
         auto select_btn = static_cast<xt_buttons>(FADER_0_SELECT + i);
         auto mute_btn = static_cast<xt_buttons>(FADER_0_MUTE + i);
 
         if (m_channels[i].IsPinned()) {
-            g_xtouch->SetSingleButton(mute_btn, xt_button_state_t::FLASHING);
+            g_xtouch->SetSingleButton(mute_btn, xt_button_state_t::ON);
         } else {
-            g_xtouch->SetSingleButton(select_btn, xt_button_state_t::FLASHING);
+            g_xtouch->SetSingleButton(select_btn, xt_button_state_t::ON);
         }
     }
 }
@@ -66,8 +66,10 @@ bool ChannelGroup::PinInterfaceLayer::HandleInput(PhysicalEvent event) {
 void ChannelGroup::GroupInterfaceLayer::Resume() {
     m_group->GenerateChannelWindows(); // Regenerate the channel windows in case the user has pinned/unpinned channels
     g_xtouch->PopLightState();
+    m_group->m_blockUpdates = false;
 }
 void ChannelGroup::GroupInterfaceLayer::Pause() {
+    m_group->m_blockUpdates = true;
     g_xtouch->PushLightState(true);
 }
 void ChannelGroup::GroupInterfaceLayer::Start() {}
@@ -198,6 +200,7 @@ void ChannelGroup::DisablePhysicalChannel(uint32_t i) {
 void ChannelGroup::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, uint32_t physical_channel_id) {
     assert(physical_channel_id >= 0 && physical_channel_id < 8);
     auto &channel = m_channels[physical_channel_id];
+    if (m_blockUpdates) { return; }
     channel.UpdateEncoderFromMA(encoder);
 }
 

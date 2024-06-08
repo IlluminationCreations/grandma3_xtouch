@@ -119,7 +119,6 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder) {
     auto FADER = PHYSICAL_CHANNEL_ID - 1;
 
     for(int i = 0; i < 4; i++) {
-        if (m_keysActive[i] == encoder.keysActive[i]) { continue; }
         m_keysActive[i] = encoder.keysActive[i];
         xt_button_state_t state = encoder.keysActive[i] ? xt_button_state_t::ON : xt_button_state_t::OFF;
 
