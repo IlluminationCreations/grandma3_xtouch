@@ -448,6 +448,19 @@ local function HandlePressingPlaybackKey(connection, seq)
 
 end
 
+local function HandlePressingSystemKey(connection, seq)
+	local keyType, down = connection.stream:read("<IB")
+	if down == 1 then
+		return
+	end
+
+	if keyType == KeyType_CLEAR then
+		Cmd("Clear")
+		return
+	end
+
+end
+
 local function HandleConnection(socket, ip, port, data)
 	if not data then return end
 
@@ -473,7 +486,7 @@ local function HandleConnection(socket, ip, port, data)
 	elseif pkt_type == PRESS_MA_PLAYBACK_KEY then
 		HandlePressingPlaybackKey(connection, seq)
 	elseif pkt_type == PRESS_MA_SYSTEM_KEY then
-		-- HandlePressingSystemKey(connection, seq)
+		HandlePressingSystemKey(connection, seq)
 	end
 end
 

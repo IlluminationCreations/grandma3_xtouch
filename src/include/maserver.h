@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <functional>
 #include <vector>
+#include <IPC.h>
 
 class MaUDPServer {
 private:
@@ -16,4 +17,5 @@ public:
     MaUDPServer();
     ssize_t Send(char *data, uint32_t size);
     ssize_t Read(char *data, uint32_t size);
+    void SendSystemButton(IPC::ButtonEvent::KeyType type, bool down);
 };

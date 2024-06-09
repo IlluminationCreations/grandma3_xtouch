@@ -177,7 +177,8 @@ enum xt_alias_btn {
     PAGE_DEC = xt_buttons::CHANNEL_LEFT,
     PAGE_INC = xt_buttons::CHANNEL_RIGHT,
     EXECUTER_SCROLL_RIGHT = xt_buttons::FADER_BANK_RIGHT,
-    EXECUTER_SCROLL_LEFT = xt_buttons::FADER_BANK_LEFT
+    EXECUTER_SCROLL_LEFT = xt_buttons::FADER_BANK_LEFT,
+    CLEAR = xt_buttons::SCRUB
 };
 
 typedef struct {

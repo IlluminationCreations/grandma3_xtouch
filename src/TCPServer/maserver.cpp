@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <maserver.h>
 #include <XController.h>
+#include <IPC.h>
 
 #define SERVER_PORT 9000
 #define SERVER_IP "127.0.0.1"
@@ -41,6 +42,20 @@ ssize_t MaUDPServer::_recvimpl(void *buf, size_t len) {
 
 ssize_t MaUDPServer::Read(char *data, uint32_t size) {
     return _recvimpl(data, size);
+}
+
+void MaUDPServer::SendSystemButton(IPC::ButtonEvent::KeyType type, bool down) {
+    IPC::IPCHeader header;
+    header.type = IPC::PacketType::PRESS_MA_SYSTEM_KEY;
+    header.seq = 0;
+    IPC::ButtonEvent::SystemKeyDown event;
+    event.key = type;
+    event.down = down;
+    char *data = (char*)malloc(sizeof(IPC::IPCHeader) + sizeof(IPC::ButtonEvent::SystemKeyDown));
+    memcpy(data, &header, sizeof(IPC::IPCHeader));
+    memcpy(data + sizeof(IPC::IPCHeader), &event, sizeof(IPC::ButtonEvent::SystemKeyDown));
+    Send(data, sizeof(IPC::IPCHeader) + sizeof(IPC::ButtonEvent::SystemKeyDown));
+    free(data);
 }
 
 // uint32_t StartCommunication() {
