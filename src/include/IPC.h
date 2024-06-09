@@ -77,7 +77,13 @@ namespace IPC {
         };
         // Other buttons, like CLEAR
         enum class KeyType : uint32_t {
-            CLEAR = 0x10101010
+            CLEAR = 0x10101010,
+            STORE = CLEAR + 1,
+            UPDATE = STORE + 1,
+            ASSIGN = UPDATE + 1,
+            MOVE = ASSIGN + 1,
+            OOPS = MOVE + 1,
+            EDIT = OOPS + 1,
         };
 
         IPC_STRUCT SystemKeyDown {

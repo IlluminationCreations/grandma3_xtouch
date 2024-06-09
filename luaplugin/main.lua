@@ -240,6 +240,12 @@ local PRESS_MA_SYSTEM_KEY = 0x8006
 local PACKET_TYPE_END = 0x8007
 
 local KeyType_CLEAR = 0x10101010
+local KeyType_STORE = KeyType_CLEAR + 1
+local KeyType_UPDATE = KeyType_STORE + 1
+local KeyType_ASSIGN = KeyType_UPDATE + 1
+local KeyType_MOVE = KeyType_ASSIGN + 1
+local KeyType_OOPS = KeyType_MOVE + 1
+local KeyType_EDIT = KeyType_OOPS +1
 
 ----------------------------------------------
 ----------------- Helpers --------------------
@@ -456,6 +462,24 @@ local function HandlePressingSystemKey(connection, seq)
 
 	if keyType == KeyType_CLEAR then
 		Cmd("Clear")
+		return
+	elseif keyType == KeyType_ASSIGN then
+		Root().GraphicsRoot.PultCollect[1].DisplayCollect[1].CmdLineSection.DisplayCommandLine.content = "Assign"
+		return
+	elseif keyType == KeyType_STORE then
+		Root().GraphicsRoot.PultCollect[1].DisplayCollect[1].CmdLineSection.DisplayCommandLine.content = "Store"
+		return
+	elseif keyType == KeyType_UPDATE then
+		Root().GraphicsRoot.PultCollect[1].DisplayCollect[1].CmdLineSection.DisplayCommandLine.content = "Update"
+		return
+	elseif keyType == KeyType_MOVE then
+		Root().GraphicsRoot.PultCollect[1].DisplayCollect[1].CmdLineSection.DisplayCommandLine.content = "Move"
+		return
+	elseif keyType == KeyType_OOPS then
+		Cmd("Oops")
+		return
+	elseif keyType == KeyType_EDIT then
+		Root().GraphicsRoot.PultCollect[1].DisplayCollect[1].CmdLineSection.DisplayCommandLine.content = "Edit"
 		return
 	end
 

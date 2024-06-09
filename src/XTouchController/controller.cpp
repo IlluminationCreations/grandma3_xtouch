@@ -19,19 +19,47 @@ public:
         assert(false); // Should never be removed
     }
     bool HandleInput(PhysicalEvent event) override {
+        // TODO: Fix this mess, for sure.
         if (event.type != PhysicalEventType::BUTTON) { return false; }
+        if (
+            event.data.button.Id != xt_alias_btn::CLEAR &&
+            event.data.button.Id != xt_alias_btn::STORE &&
+            event.data.button.Id != xt_alias_btn::UPDATE &&
+            event.data.button.Id != xt_alias_btn::ASSIGN &&
+            event.data.button.Id != xt_alias_btn::MOVE &&
+            event.data.button.Id != xt_alias_btn::OOPS &&
+            event.data.button.Id != xt_alias_btn::EDIT
+        ) { return false; }
+
+        bool down = event.data.button.down;
+        if (down) {
+            g_xtouch->SetSingleButton(xt_alias_btn::CLEAR, xt_button_state_t::ON);
+        } else {
+            g_xtouch->SetSingleButton(xt_alias_btn::CLEAR, xt_button_state_t::OFF);
+        }
         if (event.data.button.Id == xt_alias_btn::CLEAR) {
-            bool down = event.data.button.down;
-            if (down) {
-                g_xtouch->SetSingleButton(xt_alias_btn::CLEAR, xt_button_state_t::ON);
-            } else {
-                g_xtouch->SetSingleButton(xt_alias_btn::CLEAR, xt_button_state_t::OFF);
-            }
             ma_server->SendSystemButton(IPC::ButtonEvent::KeyType::CLEAR, event.data.button.down);
-            return true;
+        }
+        if (event.data.button.Id == xt_alias_btn::STORE) {
+            ma_server->SendSystemButton(IPC::ButtonEvent::KeyType::STORE, event.data.button.down);
+        }
+        if (event.data.button.Id == xt_alias_btn::UPDATE) {
+            ma_server->SendSystemButton(IPC::ButtonEvent::KeyType::UPDATE, event.data.button.down);
+        }
+        if (event.data.button.Id == xt_alias_btn::ASSIGN) {
+            ma_server->SendSystemButton(IPC::ButtonEvent::KeyType::ASSIGN, event.data.button.down);
+        }
+        if (event.data.button.Id == xt_alias_btn::MOVE) {
+            ma_server->SendSystemButton(IPC::ButtonEvent::KeyType::MOVE, event.data.button.down);
+        }
+        if (event.data.button.Id == xt_alias_btn::OOPS) {
+            ma_server->SendSystemButton(IPC::ButtonEvent::KeyType::OOPS, event.data.button.down);
+        }
+        if (event.data.button.Id == xt_alias_btn::EDIT) {
+            ma_server->SendSystemButton(IPC::ButtonEvent::KeyType::EDIT, event.data.button.down);
         }
 
-        return false;
+        return true;
     }
 };
 

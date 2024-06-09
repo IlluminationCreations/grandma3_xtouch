@@ -5,7 +5,6 @@
 #include <assert.h>
 #include <maserver.h>
 #include <XController.h>
-#include <IPC.h>
 
 #define SERVER_PORT 9000
 #define SERVER_IP "127.0.0.1"
