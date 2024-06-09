@@ -207,23 +207,6 @@ void ChannelGroup::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, uint3
     channel.UpdateEncoderFromMA(encoder, !m_blockUpdates);
 }
 
-void ChannelGroup::UpdateWatchList() {
-    auto buffer_size = sizeof(IPC::IPCHeader) + sizeof(IPC::PlaybackRefresh::Request);
-    char *buffer = (char*)malloc(buffer_size);
-    IPC::IPCHeader *header = (IPC::IPCHeader*)buffer;
-    IPC::PlaybackRefresh::Request *packet = (IPC::PlaybackRefresh::Request*)(buffer + sizeof(IPC::IPCHeader));
-
-    header->type = IPC::PacketType::REQ_ENCODERS;
-    header->seq = 0; // TODO: Implement sequence number
-
-    for(int i = 0; i < PHYSICAL_CHANNEL_COUNT; i++) {
-        auto address = m_channels[i].m_address->Get();
-
-        packet->EncoderRequest[i].channel = address.subAddress;
-        packet->EncoderRequest[i].page = address.mainAddress;
-    }
-}
-
 void ChannelGroup::ChangePage(int32_t pageOffset) {
     assert(pageOffset == -1 || pageOffset == 1);
     m_sequence = m_sequence + 1;
@@ -232,11 +215,7 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
     if (pageOffset == -1 && cur_page > 1) { m_page->Set(cur_page - 1);;} 
     if (pageOffset == 1 && cur_page < MAX_PAGE_COUNT) { m_page->Set(cur_page + 1); } 
     if (m_page->Get() == cur_page) { return; }
-    auto new_page = m_page->Get();
     GenerateChannelWindows();
-
-    PredicateSetLight(new_page < 99, xt_alias_btn::PAGE_INC, xt_button_state_t::ON);
-    PredicateSetLight(new_page > 1, xt_alias_btn::PAGE_DEC, xt_button_state_t::ON);
 
     // When changing page, we reset the channel subaddress
     m_channelOffset = 0;
@@ -256,7 +235,7 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
         it++;
     }
 
-    UpdateWatchList();
+    RefreshPageChannelLights();
 }
 
 void ChannelGroup::SetLight(char button, xt_button_state_t state) {
@@ -277,6 +256,17 @@ void ChannelGroup::PredicateSetLight(bool predicate, char button, xt_button_stat
 
 }
 
+void ChannelGroup::RefreshPageChannelLights() 
+{
+    bool final_window = m_channelOffset == m_channelOffsetEnd;
+    auto new_page = m_page->Get();
+    PredicateSetLight(!final_window, xt_alias_btn::EXECUTER_SCROLL_RIGHT, xt_button_state_t::ON);
+    PredicateSetLight(m_channelOffset > 0, xt_alias_btn::EXECUTER_SCROLL_LEFT, xt_button_state_t::ON);
+    PredicateSetLight(new_page < 99, xt_alias_btn::PAGE_INC, xt_button_state_t::ON);
+    PredicateSetLight(new_page > 1, xt_alias_btn::PAGE_DEC, xt_button_state_t::ON);
+
+}
+
 void ChannelGroup::ScrollPage(int32_t scrollOffset) {
     assert(scrollOffset == -1 || scrollOffset == 1);
     assert(m_channelWindows.size() > 0 && "Channel windows not generated");
@@ -292,9 +282,6 @@ void ChannelGroup::ScrollPage(int32_t scrollOffset) {
     auto &&it = window.begin();
     bool final_window = m_channelOffset == m_channelOffsetEnd;
     
-    PredicateSetLight(!final_window, xt_alias_btn::EXECUTER_SCROLL_RIGHT, xt_button_state_t::ON);
-    PredicateSetLight(m_channelOffset > 0, xt_alias_btn::EXECUTER_SCROLL_LEFT, xt_button_state_t::ON);
-
     int i = 0; // We need to keep track of the number of channels we've updated, since we might not update all of them if we reach the final window
     // The final window might not have enough channels to fill all the physical channels.
     for(; i < PHYSICAL_CHANNEL_COUNT; i++) {
@@ -318,8 +305,7 @@ void ChannelGroup::ScrollPage(int32_t scrollOffset) {
         }
     }
     assert(it == window.end());
-
-    UpdateWatchList();
+    RefreshPageChannelLights();
 }
 
 void ChannelGroup::RegisterMaSend(MaUDPServer *server) {

@@ -64,7 +64,6 @@ private:
 
     GroupInterfaceLayer *m_interfaceLayer;
 
-    void UpdateWatchList(); 
     void TogglePinConfigMode();
     void GenerateChannelWindows();
     void HandleAddressChange(xt_alias_btn btn);
@@ -74,6 +73,7 @@ private:
     void HandleFaderButton(ButtonUtils::ButtonInfo info, bool down);
     void SetLight(char button, xt_button_state_t state);
     void PredicateSetLight(bool condition, char button, xt_button_state_t state);
+    void RefreshPageChannelLights();
 
     // CBs
     MaUDPServer *m_maServer;
