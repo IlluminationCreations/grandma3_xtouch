@@ -72,6 +72,8 @@ private:
     bool RefreshPlaybacksImpl();
     bool HandlePhysicalEvent(PhysicalEvent event);
     void HandleFaderButton(ButtonUtils::ButtonInfo info, bool down);
+    void SetLight(char button, xt_button_state_t state);
+    void PredicateSetLight(bool condition, char button, xt_button_state_t state);
 
     // CBs
     MaUDPServer *m_maServer;

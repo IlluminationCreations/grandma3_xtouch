@@ -96,6 +96,10 @@ ChannelGroup::ChannelGroup() {
     m_interfaceLayer = new GroupInterfaceLayer(this);
     m_interfaceLayer->cb_HandleInput = [this](PhysicalEvent event) { return HandlePhysicalEvent(event); };
     g_interfaceManager->PushLayer(m_interfaceLayer);
+
+    // Initial light states
+    SetLight(xt_alias_btn::PAGE_INC, xt_button_state_t::ON);
+    SetLight(xt_alias_btn::EXECUTER_SCROLL_RIGHT, xt_button_state_t::ON);
 }
 
 bool ChannelGroup::HandlePhysicalEvent(PhysicalEvent event)
@@ -228,7 +232,11 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
     if (pageOffset == -1 && cur_page > 1) { m_page->Set(cur_page - 1);;} 
     if (pageOffset == 1 && cur_page < MAX_PAGE_COUNT) { m_page->Set(cur_page + 1); } 
     if (m_page->Get() == cur_page) { return; }
+    auto new_page = m_page->Get();
     GenerateChannelWindows();
+
+    PredicateSetLight(new_page < 99, xt_alias_btn::PAGE_INC, xt_button_state_t::ON);
+    PredicateSetLight(new_page > 1, xt_alias_btn::PAGE_DEC, xt_button_state_t::ON);
 
     // When changing page, we reset the channel subaddress
     m_channelOffset = 0;
@@ -251,6 +259,24 @@ void ChannelGroup::ChangePage(int32_t pageOffset) {
     UpdateWatchList();
 }
 
+void ChannelGroup::SetLight(char button, xt_button_state_t state) {
+    if (m_blockUpdates) { return; }
+    g_xtouch->SetSingleButton(button, state);
+}
+
+void ChannelGroup::PredicateSetLight(bool predicate, char button, xt_button_state_t state) {
+    if (m_blockUpdates) { return; }
+    if (predicate) 
+    {
+        g_xtouch->SetSingleButton(button, state);
+    }
+    else 
+    {
+        g_xtouch->SetSingleButton(button, xt_button_state_t::OFF);
+    }
+
+}
+
 void ChannelGroup::ScrollPage(int32_t scrollOffset) {
     assert(scrollOffset == -1 || scrollOffset == 1);
     assert(m_channelWindows.size() > 0 && "Channel windows not generated");
@@ -265,6 +291,9 @@ void ChannelGroup::ScrollPage(int32_t scrollOffset) {
     auto &window = m_channelWindows[m_channelOffset];
     auto &&it = window.begin();
     bool final_window = m_channelOffset == m_channelOffsetEnd;
+    
+    PredicateSetLight(!final_window, xt_alias_btn::EXECUTER_SCROLL_RIGHT, xt_button_state_t::ON);
+    PredicateSetLight(m_channelOffset > 0, xt_alias_btn::EXECUTER_SCROLL_LEFT, xt_button_state_t::ON);
 
     int i = 0; // We need to keep track of the number of channels we've updated, since we might not update all of them if we reach the final window
     // The final window might not have enough channels to fill all the physical channels.
@@ -338,6 +367,7 @@ void ChannelGroup::GenerateChannelWindows() {
     if (cur_window.size() > 0) { windows.push_back(cur_window); }
     m_channelWindows = std::move(windows);
     m_channelOffsetEnd = m_channelWindows.size() - 1;
+    if (m_channelOffset > m_channelOffsetEnd) { m_channelOffset = m_channelOffsetEnd; }
 }
 
 void ChannelGroup::HandleFaderButton(ButtonUtils::ButtonInfo info, bool down) {
