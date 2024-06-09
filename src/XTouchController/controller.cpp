@@ -60,8 +60,12 @@ XTouchController::XTouchController() {
 
     m_watchDog = std::thread(&XTouchController::WatchDog, this);
     m_watchDog.detach();
-    m_group.RegisterMaSend(&ma_server);
+
+    // Needs to be pushed before the ChannelGroup is created
     g_interfaceManager->PushLayer(new ControllerInterfaceLayer(&ma_server));
+
+    m_group = new ChannelGroup();
+    m_group->RegisterMaSend(&ma_server);
 }
 
 void XTouchController::WatchDog() {

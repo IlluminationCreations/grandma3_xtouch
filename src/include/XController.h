@@ -32,7 +32,7 @@ private:
 
     TCPServer *xt_server = nullptr;
     MaUDPServer ma_server;
-    ChannelGroup m_group;
+    ChannelGroup *m_group;
     std::thread m_watchDog;
 
     void WatchDog();
