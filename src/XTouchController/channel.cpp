@@ -216,7 +216,6 @@ void Encoder::SetValue(float value, bool physical) {
     }
 
 
-    if (m_value == value) { return; }
     m_value = value;
     switch (m_type) {
         case EncoderId::Dial: 
