@@ -33,9 +33,9 @@ public:
 
         bool down = event.data.button.down;
         if (down) {
-            g_xtouch->SetSingleButton(xt_alias_btn::CLEAR, xt_button_state_t::ON);
+            g_xtouch->SetSingleButton(event.data.button.Id, xt_button_state_t::ON);
         } else {
-            g_xtouch->SetSingleButton(xt_alias_btn::CLEAR, xt_button_state_t::OFF);
+            g_xtouch->SetSingleButton(event.data.button.Id, xt_button_state_t::OFF);
         }
         if (event.data.button.Id == xt_alias_btn::CLEAR) {
             ma_server->SendSystemButton(IPC::ButtonEvent::KeyType::CLEAR, event.data.button.down);
