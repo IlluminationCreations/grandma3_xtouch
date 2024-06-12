@@ -23,6 +23,14 @@ namespace IPC {
     };
 
     namespace PlaybackRefresh {
+        enum class EncoderType : uint16_t {
+            x100 = 0x100,
+            x200 = 0x200,
+            x300 = 0x300,
+            x400 = 0x400,
+            None = 0x500
+        };
+
         // =============================================
         // ============== REQ_ENCODERS =================
         // =============================================
@@ -46,6 +54,7 @@ namespace IPC {
             uint16_t page;
             uint8_t channel; // eg x01, x02, x03
             IPC_STRUCT {
+                EncoderType type;
                 bool isActive;
                 char key_name[8];
                 float value;
@@ -84,6 +93,8 @@ namespace IPC {
             MOVE = ASSIGN + 1,
             OOPS = MOVE + 1,
             EDIT = OOPS + 1,
+            DELETE = EDIT + 1,
+            ESC = DELETE + 1,
         };
 
         IPC_STRUCT SystemKeyDown {

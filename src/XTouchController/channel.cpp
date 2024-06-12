@@ -18,7 +18,8 @@ void Channel::UpdateEncoderFromXT(int value, bool isFader) {
          UpdateDial(value);
          return;
      }
-    auto &enc = m_encoder[2]; // Fader
+    auto &enc = GetEncoderRefFromType(IPC::PlaybackRefresh::EncoderType::x200);
+    assert(enc.m_type == EncoderId::Fader);
 
     auto address = m_address->Get();
     auto normalized_value = (value / 16380.0f) * 100.0f; // 0.0f - 100.0f
@@ -48,7 +49,13 @@ void Channel::UpdateDial(int value) {
      if (!m_maServer) {return;}
     auto address = m_address->Get();
     // 0 = 4xx, 1 = 3xx
-    auto &enc = m_toggle ? m_encoder[1] : m_encoder[0]; 
+    IPC::PlaybackRefresh::EncoderType type = m_toggle ? IPC::PlaybackRefresh::EncoderType::x300 : IPC::PlaybackRefresh::EncoderType::x400;
+    auto &enc = GetEncoderRefFromType(type);
+    if (m_toggle) {
+        assert(enc.m_type == EncoderId::SoundMeter);
+    } else {
+        assert(enc.m_type == EncoderId::Dial);
+    }
     auto current_value = enc.GetValue();
 
 
@@ -85,6 +92,37 @@ void Channel::UpdateDial(int value) {
     m_lastPhysicalChange = std::chrono::system_clock::now();
 }
 
+Encoder& Channel::GetEncoderRefFromType(IPC::PlaybackRefresh::EncoderType type) {
+    switch (type) {
+        case IPC::PlaybackRefresh::EncoderType::x100: 
+        {
+            assert(false); // This should never happen
+
+        }
+        case IPC::PlaybackRefresh::EncoderType::x200: 
+        {
+            assert(m_encoder[0].m_type == EncoderId::Fader);
+            return m_encoder[0];
+
+        }
+        case IPC::PlaybackRefresh::EncoderType::x300: 
+        {
+            assert(m_encoder[1].m_type == EncoderId::SoundMeter);
+            return m_encoder[1];
+
+        }
+        case IPC::PlaybackRefresh::EncoderType::x400: 
+        {
+            assert(m_encoder[2].m_type == EncoderId::Dial);
+            return m_encoder[2];
+        }
+        default: 
+        {
+            assert(false);
+        }
+    }
+}
+
 void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, bool updateButtonLights) {
     auto address = m_address->Get();
     ASSERT_EQ_INT(address.mainAddress, encoder.page);
@@ -94,13 +132,14 @@ void Channel::UpdateEncoderFromMA(IPC::PlaybackRefresh::Data encoder, bool updat
     // 0,   1,   2
     // 4xx, 3xx, 2xx encoders
     for(int i = 0; i < 3; i++) {
-        m_encoder[i].SetValue(encoder.Encoders[i].value, false);   
-        m_encoder[i].SetActive(encoder.Encoders[i].isActive);
+        auto &enc = GetEncoderRefFromType(encoder.Encoders[i].type);
+        enc.SetValue(encoder.Encoders[i].value, false);   
+        enc.SetActive(encoder.Encoders[i].isActive);
 
         // Code below is for encoders 4xx and 3xx       
         if (i == 3) { continue; }
 
-        m_encoder[i].SetName(encoder.Encoders[i].key_name);
+        enc.SetName(encoder.Encoders[i].key_name);
         if (m_toggle && i == 1) // m_toggle means we're displaying the 3xx encoder
         {
             m_scribbleBottomText->Set(encoder.Encoders[1].key_name);

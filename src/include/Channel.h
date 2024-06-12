@@ -10,9 +10,7 @@
 #include <chrono>
 
 enum class EncoderId {
-    Dial,
-    SoundMeter,
-    Fader,
+    Fader, SoundMeter, Dial,
     Master // Special case for master fader, only contained in ChannelGroup
 };
 
@@ -21,7 +19,6 @@ private:
     using clock = std::chrono::system_clock;
     using time_point = std::chrono::time_point<clock>;
 
-    EncoderId m_type; 
     float m_value;
     bool m_active = false;
     std::string m_name;
@@ -37,6 +34,8 @@ public:
     std::string GetName();
     void SetActive(bool state);
     bool IsActive();
+    const EncoderId m_type; 
+    // const IPC::PlaybackRefresh::EncoderType type;
 };
 
 class Channel {
@@ -52,6 +51,7 @@ private:
     std::chrono::time_point<std::chrono::system_clock> m_lastPhysicalChange;
     Observer<xt_colours_t> *m_scribbleColour;
     Observer<std::string> *m_scribbleBottomText;
+    Encoder& GetEncoderRefFromType(IPC::PlaybackRefresh::EncoderType type);
 
 public:
     Channel(uint32_t id);

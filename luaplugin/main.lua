@@ -246,6 +246,14 @@ local KeyType_ASSIGN = KeyType_UPDATE + 1
 local KeyType_MOVE = KeyType_ASSIGN + 1
 local KeyType_OOPS = KeyType_MOVE + 1
 local KeyType_EDIT = KeyType_OOPS +1
+local KeyType_DELETE = KeyType_EDIT +1
+local KeyType_ESC = KeyType_DELETE +1
+
+local EncoderType_x100 = 0x100
+local EncoderType_x200 = 0x200
+local EncoderType_x300 = 0x300
+local EncoderType_x400 = 0x400
+local EncoderType_None = 0x500
 
 ----------------------------------------------
 ----------------- Helpers --------------------
@@ -300,13 +308,21 @@ local function GetExecutersFromChannel(page, channel)
 		if executor then
 			bchActive = 1
 			if i == 3 then
-			    _400 = executor
+				_400 = {}
+				_400["exec"] = executor
+				_400["type"] = EncoderType_x400
 			elseif i == 2 then
-			    _300 = executor
+				_300 = {}
+				_300["exec"] = executor
+				_300["type"] = EncoderType_x300
 			elseif i == 1 then
-			    _200 = executor
+				_200 = {}
+				_200["exec"] = executor
+				_200["type"] = EncoderType_x200
 			elseif i == 0 then
-			    _100 = executor
+				_100 = {}
+				_100["exec"] = executor
+				_100["type"] = EncoderType_x100
 			end
 		end
 	end
@@ -320,6 +336,7 @@ local function GetExecutersFromChannel(page, channel)
 end
 
 local function PrepareEncoderData(connection, encoderObj)
+	Printf("Preparing encoder data")
 	-- struct ChannelData  {
 	-- 	uint16_t page;
 	-- 	uint8_t channel; // eg x01, x02, x03
@@ -335,24 +352,28 @@ local function PrepareEncoderData(connection, encoderObj)
 
 	-- Encoders
 	for i=1, 3 do
+		Printf("Encoder index: " .. tostring(i))
 		local encoder = encoderObj.unsafeEncoders[i]
-		if encoder == nil or encoder["FADER"] == "" then
+		local exec = encoder["exec"]
+		if encoder == nil or exec["FADER"] == "" then
 			-- Printf("Encoder is nil on page " .. tostring(encoderObj.page) .. " channel " .. tostring(encoderObj.channel))
-			packet_data = packet_data .. pack("<Bc8f", 0, "        ", 0)
+			packet_data = packet_data .. pack("<HBc8f", EncoderType_None, 0, "        ", 0)
+			Printf("Encoder is nil on page " .. tostring(encoderObj.page) .. " channel " .. tostring(encoderObj.channel))
 		else
-			if encoder["FADER"] == "" then
+			if exec["FADER"] == "" then
 				-- Printf("empty text")
 			end
 			-- Printf("Encoder is not nil on page " .. tostring(encoderObj.page) .. " channel " .. tostring(encoderObj.channel))
 			-- Printf("Encoder name: " .. encoder["FADER"] .. " value: " .. encoder:GetFader({}))
-			packet_data = packet_data .. pack("<Bc8f", 1, string.sub(encoder["FADER"], 1, 8), encoder:GetFader({}))
+			Printf("Encoder name: " .. exec["FADER"] .. " value: " .. exec:GetFader({}))
+			packet_data = packet_data .. pack("<HBc8f", encoder["type"] , 1, string.sub(exec["FADER"], 1, 8), exec:GetFader({}))
 		end
 	end
 
 	-- keysActive
 	for i=1, 4 do
 		local encoder = encoderObj.unsafeEncoders[i]
-		if encoder == nil or encoder["KEY"] == "" then
+		if encoder == nil or encoder["exec"]["KEY"] == "" then
 			packet_data = packet_data .. pack("<B", 0)
 		else
 			packet_data = packet_data .. pack("<B", 1)
@@ -480,6 +501,12 @@ local function HandlePressingSystemKey(connection, seq)
 		return
 	elseif keyType == KeyType_EDIT then
 		Root().GraphicsRoot.PultCollect[1].DisplayCollect[1].CmdLineSection.DisplayCommandLine.content = "Edit"
+		return
+	elseif keyType == KeyType_DELETE then
+		Root().GraphicsRoot.PultCollect[1].DisplayCollect[1].CmdLineSection.DisplayCommandLine.content = "Delete"
+		return
+	elseif keyType == KeyType_ESC then
+		Root().GraphicsRoot.PultCollect[1].DisplayCollect[1].CmdLineSection.DisplayCommandLine.content = ""
 		return
 	end
 

@@ -184,7 +184,9 @@ enum xt_alias_btn {
     ASSIGN = xt_buttons::AUTOMATION_TRIM,
     MOVE = xt_buttons::AUTOMATION_TOUCH,
     OOPS = xt_buttons::AUTOMATION_LATCH,
-    EDIT = xt_buttons::AUTOMATION_GROUP
+    EDIT = xt_buttons::AUTOMATION_GROUP,
+    DELETE = xt_buttons::UTILITY_CANCEL,
+    ESC = xt_buttons::UTILITY_SAVE
 };
 
 typedef struct {

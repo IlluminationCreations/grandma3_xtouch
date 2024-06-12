@@ -28,7 +28,9 @@ public:
             event.data.button.Id != xt_alias_btn::ASSIGN &&
             event.data.button.Id != xt_alias_btn::MOVE &&
             event.data.button.Id != xt_alias_btn::OOPS &&
-            event.data.button.Id != xt_alias_btn::EDIT
+            event.data.button.Id != xt_alias_btn::EDIT &&
+            event.data.button.Id != xt_alias_btn::ESC &&
+            event.data.button.Id != xt_alias_btn::DELETE
         ) { return false; }
 
         bool down = event.data.button.down;
@@ -57,6 +59,12 @@ public:
         }
         if (event.data.button.Id == xt_alias_btn::EDIT) {
             ma_server->SendSystemButton(IPC::ButtonEvent::KeyType::EDIT, event.data.button.down);
+        }
+        if (event.data.button.Id == xt_alias_btn::ESC) {
+            ma_server->SendSystemButton(IPC::ButtonEvent::KeyType::ESC, event.data.button.down);
+        }
+        if (event.data.button.Id == xt_alias_btn::DELETE) {
+            ma_server->SendSystemButton(IPC::ButtonEvent::KeyType::DELETE, event.data.button.down);
         }
 
         return true;
