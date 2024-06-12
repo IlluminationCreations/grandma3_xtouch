@@ -336,7 +336,7 @@ local function GetExecutersFromChannel(page, channel)
 end
 
 local function PrepareEncoderData(connection, encoderObj)
-	Printf("Preparing encoder data")
+	-- Printf("Preparing encoder data")
 	-- struct ChannelData  {
 	-- 	uint16_t page;
 	-- 	uint8_t channel; // eg x01, x02, x03
@@ -352,20 +352,20 @@ local function PrepareEncoderData(connection, encoderObj)
 
 	-- Encoders
 	for i=1, 3 do
-		Printf("Encoder index: " .. tostring(i))
+		-- Printf("Encoder index: " .. tostring(i))
 		local encoder = encoderObj.unsafeEncoders[i]
 		local exec = encoder["exec"]
 		if encoder == nil or exec["FADER"] == "" then
 			-- Printf("Encoder is nil on page " .. tostring(encoderObj.page) .. " channel " .. tostring(encoderObj.channel))
 			packet_data = packet_data .. pack("<HBc8f", EncoderType_None, 0, "        ", 0)
-			Printf("Encoder is nil on page " .. tostring(encoderObj.page) .. " channel " .. tostring(encoderObj.channel))
+			-- Printf("Encoder is nil on page " .. tostring(encoderObj.page) .. " channel " .. tostring(encoderObj.channel))
 		else
 			if exec["FADER"] == "" then
 				-- Printf("empty text")
 			end
 			-- Printf("Encoder is not nil on page " .. tostring(encoderObj.page) .. " channel " .. tostring(encoderObj.channel))
 			-- Printf("Encoder name: " .. encoder["FADER"] .. " value: " .. encoder:GetFader({}))
-			Printf("Encoder name: " .. exec["FADER"] .. " value: " .. exec:GetFader({}))
+			-- Printf("Encoder name: " .. exec["FADER"] .. " value: " .. exec:GetFader({}))
 			packet_data = packet_data .. pack("<HBc8f", encoder["type"] , 1, string.sub(exec["FADER"], 1, 8), exec:GetFader({}))
 		end
 	end
